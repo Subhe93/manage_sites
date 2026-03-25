@@ -1,0 +1,607 @@
+classDiagram
+    %% Core Entities
+    class Users {
+        +int id PK
+        +string username
+        +string email
+        +string password_hash
+        +string full_name
+        +enum role
+        +boolean is_active
+        +datetime last_login
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class Clients {
+        +int id PK
+        +string client_name
+        +string company_name
+        +string email
+        +string phone
+        +string address
+        +string country
+        +enum status
+        +text notes
+        +int created_by FK
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class ServiceProviders {
+        +int id PK
+        +string provider_name
+        +enum provider_type
+        +string website_url
+        +string support_email
+        +string support_phone
+        +string api_endpoint
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    %% Domain Management
+    class Domains {
+        +int id PK
+        +string domain_name
+        +string tld
+        +enum status
+        +int registrar_id FK
+        +int client_id FK
+        +date registration_date
+        +date expiry_date
+        +boolean auto_renew
+        +int renewal_notification_days
+        +boolean whois_privacy
+        +string nameservers
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class DomainCosts {
+        +int id PK
+        +int domain_id FK
+        +decimal cost_amount
+        +string currency
+        +enum billing_cycle
+        +date purchase_date
+        +date next_billing_date
+        +string payment_method
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class WhoisHistory {
+        +int id PK
+        +int domain_id FK
+        +string registrant_name
+        +string registrant_email
+        +string registrant_organization
+        +string admin_contact
+        +string tech_contact
+        +json whois_data
+        +datetime captured_at
+    }
+
+    %% Server Management
+    class Servers {
+        +int id PK
+        +string server_name
+        +int provider_id FK
+        +enum server_type
+        +string ip_address
+        +string location
+        +string operating_system
+        +enum control_panel
+        +string control_panel_url
+        +int cpu_cores
+        +int ram_gb
+        +int storage_gb
+        +int bandwidth_gb
+        +enum status
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class ServerAccounts {
+        +int id PK
+        +int server_id FK
+        +string account_name
+        +string username
+        +string password_encrypted
+        +enum access_level
+        +string control_panel_url
+        +int ssh_port
+        +int ftp_port
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class ServerCosts {
+        +int id PK
+        +int server_id FK
+        +decimal cost_amount
+        +string currency
+        +enum billing_cycle
+        +date activation_date
+        +date next_billing_date
+        +boolean auto_renew
+        +string payment_method
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class ServerMonitoring {
+        +int id PK
+        +int server_id FK
+        +decimal cpu_usage
+        +decimal ram_usage
+        +decimal storage_usage
+        +decimal bandwidth_usage
+        +decimal uptime_percentage
+        +int response_time_ms
+        +datetime recorded_at
+    }
+
+    %% Website Management
+    class Websites {
+        +int id PK
+        +string website_name
+        +int domain_id FK
+        +int client_id FK
+        +int server_account_id FK
+        +enum website_type
+        +string framework
+        +enum environment
+        +string website_url
+        +string admin_url
+        +string api_endpoint
+        +string database_name
+        +string database_type
+        +enum status
+        +text description
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class WebsiteCredentials {
+        +int id PK
+        +int website_id FK
+        +enum credential_type
+        +string username
+        +string password_encrypted
+        +string access_url
+        +json additional_info
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class WebsiteCosts {
+        +int id PK
+        +int website_id FK
+        +decimal cost_amount
+        +string currency
+        +enum billing_cycle
+        +enum cost_type
+        +date start_date
+        +date next_billing_date
+        +boolean auto_renew
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    %% Custom Fields
+    class CustomFieldDefinitions {
+        +int id PK
+        +enum entity_type
+        +string field_name
+        +string field_label
+        +enum field_type
+        +json field_options
+        +boolean is_required
+        +string default_value
+        +int display_order
+        +boolean is_active
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class CustomFieldValues {
+        +int id PK
+        +int field_definition_id FK
+        +enum entity_type
+        +int entity_id
+        +string field_value
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    %% Cloudflare Integration
+    class CloudflareAccounts {
+        +int id PK
+        +string account_name
+        +string account_email
+        +string account_id
+        +string api_key_encrypted
+        +string api_token_encrypted
+        +enum status
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class CloudflareDomains {
+        +int id PK
+        +int domain_id FK
+        +int cloudflare_account_id FK
+        +string zone_id
+        +string nameservers
+        +enum ssl_mode
+        +enum cache_level
+        +enum security_level
+        +boolean is_active
+        +datetime activated_at
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    %% Google Services
+    class GoogleAdsAccounts {
+        +int id PK
+        +string account_name
+        +string account_email
+        +string customer_id
+        +json api_credentials
+        +enum status
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class GoogleAdsCampaigns {
+        +int id PK
+        +int google_ads_account_id FK
+        +int website_id FK
+        +int domain_id FK
+        +string campaign_name
+        +string campaign_id
+        +enum campaign_type
+        +decimal budget_amount
+        +string currency
+        +enum status
+        +date start_date
+        +date end_date
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class GoogleSearchConsoleAccounts {
+        +int id PK
+        +string account_name
+        +string account_email
+        +json api_credentials
+        +enum status
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class GoogleSearchConsoleProperties {
+        +int id PK
+        +int gsc_account_id FK
+        +int website_id FK
+        +int domain_id FK
+        +string property_url
+        +enum property_type
+        +enum verification_method
+        +boolean is_verified
+        +datetime verified_at
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class GoogleTagManagerAccounts {
+        +int id PK
+        +string account_name
+        +string account_email
+        +string account_id
+        +json api_credentials
+        +enum status
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class GoogleTagManagerContainers {
+        +int id PK
+        +int gtm_account_id FK
+        +int website_id FK
+        +string container_name
+        +string container_id
+        +string container_public_id
+        +enum container_type
+        +int tags_count
+        +int triggers_count
+        +int variables_count
+        +boolean is_active
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class GoogleAnalyticsAccounts {
+        +int id PK
+        +string account_name
+        +string account_email
+        +string account_id
+        +string property_id
+        +string measurement_id
+        +json api_credentials
+        +enum analytics_version
+        +enum status
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    %% Repository Management
+    class Repositories {
+        +int id PK
+        +int website_id FK
+        +enum repository_type
+        +string repository_url
+        +string repository_name
+        +string branch_name
+        +string access_token_encrypted
+        +boolean is_private
+        +string last_commit_hash
+        +datetime last_commit_date
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    %% Permissions & Security
+    class UserPermissions {
+        +int id PK
+        +int user_id FK
+        +enum entity_type
+        +int entity_id
+        +enum permission_level
+        +datetime granted_at
+        +int granted_by FK
+    }
+
+    class Notifications {
+        +int id PK
+        +enum notification_type
+        +enum entity_type
+        +int entity_id
+        +string title
+        +text message
+        +enum severity
+        +boolean is_read
+        +int sent_to_user_id FK
+        +enum sent_via
+        +datetime created_at
+        +datetime read_at
+    }
+
+    class NotificationSettings {
+        +int id PK
+        +int user_id FK
+        +enum notification_type
+        +int days_before
+        +boolean notify_via_email
+        +boolean notify_via_sms
+        +boolean notify_in_app
+        +boolean is_enabled
+    }
+
+    class ActivityLogs {
+        +int id PK
+        +int user_id FK
+        +enum action_type
+        +enum entity_type
+        +int entity_id
+        +string entity_name
+        +text description
+        +json old_values
+        +json new_values
+        +string ip_address
+        +string user_agent
+        +datetime created_at
+    }
+
+    class SecurityIncidents {
+        +int id PK
+        +enum entity_type
+        +int entity_id
+        +enum incident_type
+        +enum severity
+        +enum status
+        +datetime detected_at
+        +datetime resolved_at
+        +text description
+        +text actions_taken
+        +int reported_by FK
+        +int assigned_to FK
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    %% Tags & Documents
+    class Tags {
+        +int id PK
+        +string tag_name
+        +string tag_color
+        +text description
+        +datetime created_at
+    }
+
+    class EntityTags {
+        +int id PK
+        +int tag_id FK
+        +enum entity_type
+        +int entity_id
+        +datetime created_at
+    }
+
+    class Documents {
+        +int id PK
+        +enum entity_type
+        +int entity_id
+        +enum document_type
+        +string file_name
+        +string file_path
+        +decimal file_size_kb
+        +string mime_type
+        +int uploaded_by FK
+        +text description
+        +datetime created_at
+    }
+
+    %% Maintenance & Monitoring
+    class MaintenanceSchedules {
+        +int id PK
+        +enum entity_type
+        +int entity_id
+        +enum maintenance_type
+        +enum schedule_frequency
+        +time schedule_time
+        +int schedule_day_of_week
+        +int schedule_day_of_month
+        +datetime last_run_date
+        +datetime next_run_date
+        +boolean is_active
+        +text notes
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class MaintenanceLogs {
+        +int id PK
+        +int schedule_id FK
+        +enum entity_type
+        +int entity_id
+        +enum maintenance_type
+        +enum status
+        +int performed_by FK
+        +datetime start_time
+        +datetime end_time
+        +int duration_minutes
+        +text details
+        +text error_message
+        +datetime created_at
+    }
+
+    class UptimeChecks {
+        +int id PK
+        +int website_id FK
+        +string check_url
+        +int check_interval_minutes
+        +int timeout_seconds
+        +int expected_status_code
+        +boolean is_active
+        +datetime last_check_at
+        +enum last_status
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    class UptimeLogs {
+        +int id PK
+        +int uptime_check_id FK
+        +enum status
+        +int response_time_ms
+        +int status_code
+        +text error_message
+        +datetime checked_at
+    }
+
+    %% System
+    class ApiKeys {
+        +int id PK
+        +int user_id FK
+        +string key_name
+        +string api_key
+        +json permissions
+        +boolean is_active
+        +datetime last_used_at
+        +datetime expires_at
+        +datetime created_at
+    }
+
+    class SystemSettings {
+        +int id PK
+        +string setting_key
+        +string setting_value
+        +enum setting_type
+        +text description
+        +boolean is_public
+        +int updated_by FK
+        +datetime created_at
+        +datetime updated_at
+    }
+
+    %% Relationships
+    Users "1" --> "*" Clients : creates
+    Users "1" --> "*" UserPermissions : has
+    Users "1" --> "*" NotificationSettings : configures
+    Users "1" --> "*" Notifications : receives
+    Users "1" --> "*" ActivityLogs : performs
+    Users "1" --> "*" SecurityIncidents : reports/assigned
+    Users "1" --> "*" Documents : uploads
+    Users "1" --> "*" MaintenanceLogs : performs
+    Users "1" --> "*" ApiKeys : owns
+    Users "1" --> "*" SystemSettings : updates
+
+    Clients "1" --> "*" Domains : owns
+    Clients "1" --> "*" Websites : owns
+
+    ServiceProviders "1" --> "*" Domains : registers
+    ServiceProviders "1" --> "*" Servers : provides
+
+    Domains "1" --> "*" DomainCosts : has
+    Domains "1" --> "*" WhoisHistory : tracks
+    Domains "1" --> "*" Websites : hosts
+    Domains "1" --> "*" CloudflareDomains : uses
+    Domains "1" --> "*" GoogleAdsCampaigns : advertises
+    Domains "1" --> "*" GoogleSearchConsoleProperties : verifies
+
+    Servers "1" --> "*" ServerAccounts : contains
+    Servers "1" --> "*" ServerCosts : incurs
+    Servers "1" --> "*" ServerMonitoring : monitors
+
+    ServerAccounts "1" --> "*" Websites : hosts
+
+    Websites "1" --> "*" WebsiteCredentials : has
+    Websites "1" --> "*" WebsiteCosts : incurs
+    Websites "1" --> "*" Repositories : linked
+    Websites "1" --> "*" GoogleAdsCampaigns : promotes
+    Websites "1" --> "*" GoogleSearchConsoleProperties : tracks
+    Websites "1" --> "*" GoogleTagManagerContainers : uses
+    Websites "1" --> "*" UptimeChecks : monitors
+
+    CustomFieldDefinitions "1" --> "*" CustomFieldValues : defines
+
+    CloudflareAccounts "1" --> "*" CloudflareDomains : manages
+
+    GoogleAdsAccounts "1" --> "*" GoogleAdsCampaigns : runs
+    GoogleSearchConsoleAccounts "1" --> "*" GoogleSearchConsoleProperties : owns
+    GoogleTagManagerAccounts "1" --> "*" GoogleTagManagerContainers : contains
+
+    Tags "1" --> "*" EntityTags : categorizes
+
+    MaintenanceSchedules "1" --> "*" MaintenanceLogs : generates
+
+    UptimeChecks "1" --> "*" UptimeLogs : records

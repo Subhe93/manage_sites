@@ -1,0 +1,1067 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  super_admin
+  admin
+  developer
+  client
+  viewer
+}
+
+enum ClientStatus {
+  active
+  suspended
+  inactive
+}
+
+enum ProviderType {
+  registrar
+  hosting
+  cdn
+  ssl
+  other
+}
+
+enum DomainStatus {
+  active
+  expired
+  pending
+  suspended
+  deleted
+}
+
+enum BillingCycle {
+  monthly
+  yearly
+  two_years
+  three_years
+  five_years
+  one_time
+}
+
+enum ServerType {
+  shared
+  vps
+  dedicated
+  cloud
+}
+
+enum ControlPanel {
+  cpanel
+  plesk
+  directadmin
+  custom
+  none
+}
+
+enum ServerStatus {
+  active
+  maintenance
+  suspended
+  terminated
+}
+
+enum AccessLevel {
+  root
+  admin
+  user
+  ftp_only
+}
+
+enum WebsiteType {
+  wordpress
+  spa
+  custom
+  mobile_app
+  static
+  ecommerce
+}
+
+enum Environment {
+  development
+  staging
+  production
+}
+
+enum WebsiteStatus {
+  active
+  maintenance
+  suspended
+  archived
+}
+
+enum EntityType {
+  website
+  domain
+  server
+  client
+  all
+  project
+  invoice
+  other
+  backup
+  ssl
+}
+
+enum FieldType {
+  text
+  textarea
+  number
+  date
+  select
+  radio
+  checkbox
+  url
+  email
+}
+
+enum CredentialType {
+  admin
+  ftp
+  database
+  api
+  ssh
+  other
+}
+
+enum CostType {
+  hosting
+  maintenance
+  license
+  plugin
+  theme
+  other
+}
+
+enum CloudflareAccountStatus {
+  active
+  inactive
+  suspended
+}
+
+enum SSLMode {
+  off
+  flexible
+  full
+  strict
+}
+
+enum CacheLevel {
+  aggressive
+  basic
+  simplified
+}
+
+enum SecurityLevel {
+  off
+  essentially_off
+  low
+  medium
+  high
+  under_attack
+}
+
+enum CampaignType {
+  search
+  display
+  video
+  shopping
+  app
+  smart
+  performance_max
+}
+
+enum CampaignStatus {
+  enabled
+  paused
+  removed
+}
+
+enum PropertyType {
+  domain
+  url_prefix
+}
+
+enum VerificationMethod {
+  html_file
+  html_tag
+  google_analytics
+  google_tag_manager
+  dns
+}
+
+enum ContainerType {
+  web
+  amp
+  android
+  ios
+  server
+}
+
+enum AnalyticsVersion {
+  ua
+  ga4
+}
+
+enum RepositoryType {
+  github
+  gitlab
+  bitbucket
+  other
+}
+
+enum PermissionLevel {
+  view
+  edit
+  admin
+  owner
+}
+
+enum NotificationType {
+  domain_expiry
+  ssl_expiry
+  server_billing
+  website_billing
+  backup_failed
+  server_down
+  resource_limit
+  security_alert
+  other
+}
+
+enum SeverityLevel {
+  info
+  warning
+  critical
+}
+
+enum NotificationChannel {
+  in_app
+  email
+  sms
+  all
+}
+
+enum ActionType {
+  create
+  update
+  delete
+  login
+  logout
+  view
+  export
+  import
+}
+
+enum DocumentType {
+  contract
+  invoice
+  receipt
+  certificate
+  backup
+  report
+  other
+}
+
+enum MaintenanceType {
+  update
+  backup
+  security_scan
+  performance_check
+  other
+}
+
+enum ScheduleFrequency {
+  daily
+  weekly
+  monthly
+  quarterly
+  yearly
+  custom
+}
+
+enum MaintenanceStatus {
+  success
+  failed
+  partial
+  skipped
+}
+
+enum IncidentType {
+  malware
+  hack
+  ddos
+  data_breach
+  unauthorized_access
+  other
+}
+
+enum IncidentStatus {
+  open
+  investigating
+  resolved
+  closed
+}
+
+enum UptimeStatus {
+  up
+  down
+  degraded
+}
+
+enum SettingType {
+  string
+  number
+  boolean
+  json
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  fullName      String?  @map("full_name")
+  role          UserRole
+  isActive      Boolean  @default(true) @map("is_active")
+  lastLogin     DateTime? @map("last_login")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  createdClients         Client[]              @relation("ClientCreator")
+  permissions            UserPermission[]
+  sentNotifications      Notification[]
+  notificationSettings   NotificationSettings[]
+  activityLogs           ActivityLog[]
+  uploadedDocuments      Document[]
+  performedMaintenance   MaintenanceLogs[]
+  reportedIncidents      SecurityIncident[]    @relation("IncidentReporter")
+  assignedIncidents      SecurityIncident[]    @relation("IncidentAssignee")
+  apiKeys                ApiKey[]
+  systemSettingsUpdates  SystemSettings[]
+  grantedPermissions     UserPermission[]      @relation("PermissionGranter")
+
+  @@map("users")
+}
+
+model Client {
+  id          Int          @id @default(autoincrement())
+  clientName  String       @map("client_name")
+  companyName String?      @map("company_name")
+  email       String?
+  phone       String?
+  address     String?
+  country     String?
+  status      ClientStatus
+  notes       String?
+  createdBy   Int?         @map("created_by")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  creator     User?        @relation("ClientCreator", fields: [createdBy], references: [id])
+  domains     Domain[]
+  websites    Website[]
+
+  @@map("clients")
+}
+
+model ServiceProvider {
+  id            Int          @id @default(autoincrement())
+  providerName  String       @map("provider_name")
+  providerType  ProviderType @map("provider_type")
+  websiteUrl    String?      @map("website_url")
+  supportEmail  String?      @map("support_email")
+  supportPhone  String?      @map("support_phone")
+  apiEndpoint   String?      @map("api_endpoint")
+  notes         String?
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  domains       Domain[]
+  servers       Server[]
+
+  @@map("service_providers")
+}
+
+model Domain {
+  id                      Int           @id @default(autoincrement())
+  domainName              String        @unique @map("domain_name")
+  tld                     String?
+  status                  DomainStatus
+  registrarId             Int?          @map("registrar_id")
+  clientId                Int?          @map("client_id")
+  registrationDate        DateTime?     @map("registration_date")
+  expiryDate              DateTime?     @map("expiry_date")
+  autoRenew               Boolean       @default(true) @map("auto_renew")
+  renewalNotificationDays Int           @default(30) @map("renewal_notification_days")
+  whoisPrivacy            Boolean       @default(true) @map("whois_privacy")
+  nameservers             String?
+  notes                   String?
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+
+  registrar               ServiceProvider? @relation(fields: [registrarId], references: [id])
+  client                  Client?          @relation(fields: [clientId], references: [id])
+  costs                   DomainCost[]
+  whoisHistory            WhoisHistory[]
+  websites                Website[]
+  cloudflareDomains       CloudflareDomain[]
+  googleAdsCampaigns      GoogleAdsCampaign[]
+  gscProperties           GoogleSearchConsoleProperty[]
+
+  @@map("domains")
+}
+
+model DomainCost {
+  id              Int           @id @default(autoincrement())
+  domainId        Int           @map("domain_id")
+  costAmount      Float         @map("cost_amount")
+  currency        String
+  billingCycle    BillingCycle  @map("billing_cycle")
+  purchaseDate    DateTime?     @map("purchase_date")
+  nextBillingDate DateTime?     @map("next_billing_date")
+  paymentMethod   String?       @map("payment_method")
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  domain          Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@map("domain_costs")
+}
+
+model WhoisHistory {
+  id                     Int      @id @default(autoincrement())
+  domainId               Int      @map("domain_id")
+  registrantName         String?  @map("registrant_name")
+  registrantEmail        String?  @map("registrant_email")
+  registrantOrganization String?  @map("registrant_organization")
+  adminContact           String?  @map("admin_contact")
+  techContact            String?  @map("tech_contact")
+  whoisData              String?  @map("whois_data")
+  capturedAt             DateTime @default(now()) @map("captured_at")
+
+  domain                 Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@map("whois_history")
+}
+
+model Server {
+  id              Int           @id @default(autoincrement())
+  serverName      String        @map("server_name")
+  providerId      Int?          @map("provider_id")
+  serverType      ServerType    @map("server_type")
+  ipAddress       String?       @map("ip_address")
+  location        String?
+  operatingSystem String?       @map("operating_system")
+  controlPanel    ControlPanel? @map("control_panel")
+  controlPanelUrl String?       @map("control_panel_url")
+  cpuCores        Int?          @map("cpu_cores")
+  ramGb           Int?          @map("ram_gb")
+  storageGb       Int?          @map("storage_gb")
+  bandwidthGb     Int?          @map("bandwidth_gb")
+  status          ServerStatus
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  provider        ServiceProvider? @relation(fields: [providerId], references: [id])
+  accounts        ServerAccount[]
+  costs           ServerCost[]
+  monitoring      ServerMonitoring[]
+
+  @@map("servers")
+}
+
+model ServerAccount {
+  id                Int         @id @default(autoincrement())
+  serverId          Int         @map("server_id")
+  accountName       String      @map("account_name")
+  username          String
+  passwordEncrypted String?     @map("password_encrypted")
+  accessLevel       AccessLevel @map("access_level")
+  controlPanelUrl   String?     @map("control_panel_url")
+  sshPort           Int         @default(22) @map("ssh_port")
+  ftpPort           Int         @default(21) @map("ftp_port")
+  notes             String?
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  server            Server      @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  websites          Website[]
+
+  @@map("server_accounts")
+}
+
+model ServerCost {
+  id              Int          @id @default(autoincrement())
+  serverId        Int          @map("server_id")
+  costAmount      Float        @map("cost_amount")
+  currency        String
+  billingCycle    BillingCycle @map("billing_cycle")
+  activationDate  DateTime?    @map("activation_date")
+  nextBillingDate DateTime?    @map("next_billing_date")
+  autoRenew       Boolean      @default(true) @map("auto_renew")
+  paymentMethod   String?      @map("payment_method")
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  server          Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("server_costs")
+}
+
+model ServerMonitoring {
+  id              Int      @id @default(autoincrement())
+  serverId        Int      @map("server_id")
+  cpuUsage        Float?   @map("cpu_usage")
+  ramUsage        Float?   @map("ram_usage")
+  storageUsage    Float?   @map("storage_usage")
+  bandwidthUsage  Float?   @map("bandwidth_usage")
+  uptimePercentage Float?  @map("uptime_percentage")
+  responseTimeMs  Int?     @map("response_time_ms")
+  recordedAt      DateTime @default(now()) @map("recorded_at")
+
+  server          Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("server_monitoring")
+}
+
+model Website {
+  id              Int           @id @default(autoincrement())
+  websiteName     String        @map("website_name")
+  domainId        Int?          @map("domain_id")
+  clientId        Int?          @map("client_id")
+  serverAccountId Int?          @map("server_account_id")
+  websiteType     WebsiteType   @map("website_type")
+  framework       String?
+  environment     Environment
+  websiteUrl      String?       @map("website_url")
+  adminUrl        String?       @map("admin_url")
+  apiEndpoint     String?       @map("api_endpoint")
+  databaseName    String?       @map("database_name")
+  databaseType    String?       @map("database_type")
+  status          WebsiteStatus
+  description     String?
+  notes           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  domain          Domain?           @relation(fields: [domainId], references: [id])
+  client          Client?           @relation(fields: [clientId], references: [id])
+  serverAccount   ServerAccount?    @relation(fields: [serverAccountId], references: [id])
+  customFieldValues CustomFieldValue[]
+  credentials     WebsiteCredential[]
+  costs           WebsiteCost[]
+  repositories    Repository[]
+  googleAdsCampaigns GoogleAdsCampaign[]
+  gscProperties   GoogleSearchConsoleProperty[]
+  gtmContainers   GoogleTagManagerContainer[]
+  uptimeChecks    UptimeCheck[]
+
+  @@map("websites")
+}
+
+model CustomFieldDefinition {
+  id           Int        @id @default(autoincrement())
+  entityType   EntityType @map("entity_type")
+  fieldName    String     @map("field_name")
+  fieldLabel   String     @map("field_label")
+  fieldType    FieldType  @map("field_type")
+  fieldOptions String?    @map("field_options")
+  isRequired   Boolean    @default(false) @map("is_required")
+  defaultValue String?    @map("default_value")
+  displayOrder Int        @map("display_order")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  values       CustomFieldValue[]
+
+  @@unique([entityType, fieldName])
+  @@map("custom_field_definitions")
+}
+
+model CustomFieldValue {
+  id                Int      @id @default(autoincrement())
+  fieldDefinitionId Int      @map("field_definition_id")
+  entityType        EntityType @map("entity_type")
+  entityId          Int      @map("entity_id")
+  fieldValue        String?  @map("field_value")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  fieldDefinition   CustomFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+  website           Website?              @relation(fields: [entityId], references: [id], map: "fk_custom_field_website")
+
+  @@map("custom_field_values")
+}
+
+model WebsiteCredential {
+  id                Int            @id @default(autoincrement())
+  websiteId         Int            @map("website_id")
+  credentialType    CredentialType @map("credential_type")
+  username          String?
+  passwordEncrypted String?        @map("password_encrypted")
+  accessUrl         String?        @map("access_url")
+  additionalInfo    String?        @map("additional_info")
+  notes             String?
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  website           Website        @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@map("website_credentials")
+}
+
+model WebsiteCost {
+  id              Int          @id @default(autoincrement())
+  websiteId       Int          @map("website_id")
+  costAmount      Float        @map("cost_amount")
+  currency        String
+  billingCycle    BillingCycle @map("billing_cycle")
+  costType        CostType     @map("cost_type")
+  startDate       DateTime?    @map("start_date")
+  nextBillingDate DateTime?    @map("next_billing_date")
+  autoRenew       Boolean      @default(true) @map("auto_renew")
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  website         Website      @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@map("website_costs")
+}
+
+model CloudflareAccount {
+  id                Int                      @id @default(autoincrement())
+  accountName       String                   @map("account_name")
+  accountEmail      String                   @map("account_email")
+  accountId         String?                  @map("account_id")
+  apiKeyEncrypted   String?                  @map("api_key_encrypted")
+  apiTokenEncrypted String?                  @map("api_token_encrypted")
+  status            CloudflareAccountStatus
+  notes             String?
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  domains           CloudflareDomain[]
+
+  @@map("cloudflare_accounts")
+}
+
+model CloudflareDomain {
+  id                   Int                @id @default(autoincrement())
+  domainId             Int                @map("domain_id")
+  cloudflareAccountId  Int                @map("cloudflare_account_id")
+  zoneId               String?            @map("zone_id")
+  nameservers          String?
+  sslMode              SSLMode            @map("ssl_mode")
+  cacheLevel           CacheLevel         @map("cache_level")
+  securityLevel        SecurityLevel      @map("security_level")
+  isActive             Boolean            @default(true) @map("is_active")
+  activatedAt          DateTime           @default(now()) @map("activated_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  domain               Domain             @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  cloudflareAccount    CloudflareAccount  @relation(fields: [cloudflareAccountId], references: [id], onDelete: Cascade)
+
+  @@map("cloudflare_domains")
+}
+
+model GoogleAdsAccount {
+  id             Int                      @id @default(autoincrement())
+  accountName    String                   @map("account_name")
+  accountEmail   String                   @map("account_email")
+  customerId     String?                  @map("customer_id")
+  apiCredentials String?                  @map("api_credentials")
+  status         CloudflareAccountStatus
+  notes          String?
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+
+  campaigns      GoogleAdsCampaign[]
+
+  @@map("google_ads_accounts")
+}
+
+model GoogleAdsCampaign {
+  id                 Int             @id @default(autoincrement())
+  googleAdsAccountId Int             @map("google_ads_account_id")
+  websiteId          Int?            @map("website_id")
+  domainId           Int?            @map("domain_id")
+  campaignName       String          @map("campaign_name")
+  campaignId         String?         @map("campaign_id")
+  campaignType       CampaignType    @map("campaign_type")
+  budgetAmount       Float?          @map("budget_amount")
+  currency           String
+  status             CampaignStatus
+  startDate          DateTime?       @map("start_date")
+  endDate            DateTime?       @map("end_date")
+  notes              String?
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  googleAdsAccount   GoogleAdsAccount @relation(fields: [googleAdsAccountId], references: [id], onDelete: Cascade)
+  website            Website?         @relation(fields: [websiteId], references: [id])
+  domain             Domain?          @relation(fields: [domainId], references: [id])
+
+  @@map("google_ads_campaigns")
+}
+
+model GoogleSearchConsoleAccount {
+  id             Int                             @id @default(autoincrement())
+  accountName    String                          @map("account_name")
+  accountEmail   String                          @map("account_email")
+  apiCredentials String?                         @map("api_credentials")
+  status         CloudflareAccountStatus
+  notes          String?
+  createdAt      DateTime                        @default(now()) @map("created_at")
+  updatedAt      DateTime                        @updatedAt @map("updated_at")
+
+  properties     GoogleSearchConsoleProperty[]
+
+  @@map("google_search_console_accounts")
+}
+
+model GoogleSearchConsoleProperty {
+  id                 Int                          @id @default(autoincrement())
+  gscAccountId       Int                          @map("gsc_account_id")
+  websiteId          Int?                         @map("website_id")
+  domainId           Int?                         @map("domain_id")
+  propertyUrl        String                       @map("property_url")
+  propertyType       PropertyType                 @map("property_type")
+  verificationMethod VerificationMethod           @map("verification_method")
+  isVerified         Boolean                      @default(false) @map("is_verified")
+  verifiedAt         DateTime?                    @map("verified_at")
+  createdAt          DateTime                     @default(now()) @map("created_at")
+  updatedAt          DateTime                     @updatedAt @map("updated_at")
+
+  gscAccount         GoogleSearchConsoleAccount   @relation(fields: [gscAccountId], references: [id], onDelete: Cascade)
+  website            Website?                     @relation(fields: [websiteId], references: [id])
+  domain             Domain?                      @relation(fields: [domainId], references: [id])
+
+  @@map("google_search_console_properties")
+}
+
+model GoogleTagManagerAccount {
+  id             Int                         @id @default(autoincrement())
+  accountName    String                      @map("account_name")
+  accountEmail   String                      @map("account_email")
+  accountId      String?                     @map("account_id")
+  apiCredentials String?                     @map("api_credentials")
+  status         CloudflareAccountStatus
+  notes          String?
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  updatedAt      DateTime                    @updatedAt @map("updated_at")
+
+  containers     GoogleTagManagerContainer[]
+
+  @@map("google_tag_manager_accounts")
+}
+
+model GoogleTagManagerContainer {
+  id                Int                      @id @default(autoincrement())
+  gtmAccountId      Int                      @map("gtm_account_id")
+  websiteId         Int?                     @map("website_id")
+  containerName     String                   @map("container_name")
+  containerId       String?                  @map("container_id")
+  containerPublicId String?                  @map("container_public_id")
+  containerType     ContainerType            @map("container_type")
+  tagsCount         Int                      @default(0) @map("tags_count")
+  triggersCount     Int                      @default(0) @map("triggers_count")
+  variablesCount    Int                      @default(0) @map("variables_count")
+  isActive          Boolean                  @default(true) @map("is_active")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  gtmAccount        GoogleTagManagerAccount  @relation(fields: [gtmAccountId], references: [id], onDelete: Cascade)
+  website           Website?                 @relation(fields: [websiteId], references: [id])
+
+  @@map("google_tag_manager_containers")
+}
+
+model GoogleAnalyticsAccount {
+  id               Int                     @id @default(autoincrement())
+  accountName      String                  @map("account_name")
+  accountEmail     String                  @map("account_email")
+  accountId        String?                 @map("account_id")
+  propertyId       String?                 @map("property_id")
+  measurementId    String?                 @map("measurement_id")
+  apiCredentials   String?                 @map("api_credentials")
+  analyticsVersion AnalyticsVersion        @map("analytics_version")
+  status           CloudflareAccountStatus
+  notes            String?
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+
+  @@map("google_analytics_accounts")
+}
+
+model Repository {
+  id                   Int            @id @default(autoincrement())
+  websiteId            Int?           @map("website_id")
+  repositoryType       RepositoryType @map("repository_type")
+  repositoryUrl        String         @map("repository_url")
+  repositoryName       String?        @map("repository_name")
+  branchName           String         @map("branch_name")
+  accessTokenEncrypted String?        @map("access_token_encrypted")
+  isPrivate            Boolean        @default(true) @map("is_private")
+  lastCommitHash       String?        @map("last_commit_hash")
+  lastCommitDate       DateTime?      @map("last_commit_date")
+  notes                String?
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  website              Website?       @relation(fields: [websiteId], references: [id])
+
+  @@map("repositories")
+}
+
+model UserPermission {
+  id              Int             @id @default(autoincrement())
+  userId          Int             @map("user_id")
+  entityType      EntityType      @map("entity_type")
+  entityId        Int?            @map("entity_id")
+  permissionLevel PermissionLevel @map("permission_level")
+  grantedAt       DateTime        @default(now()) @map("granted_at")
+  grantedBy       Int?            @map("granted_by")
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  granter         User?           @relation("PermissionGranter", fields: [grantedBy], references: [id])
+
+  @@map("user_permissions")
+}
+
+model Notification {
+  id               Int              @id @default(autoincrement())
+  notificationType NotificationType @map("notification_type")
+  entityType       EntityType       @map("entity_type")
+  entityId         Int?             @map("entity_id")
+  title            String
+  message          String?
+  severity         SeverityLevel
+  isRead           Boolean          @default(false) @map("is_read")
+  sentToUserId     Int?             @map("sent_to_user_id")
+  sentVia          NotificationChannel @map("sent_via")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  readAt           DateTime?        @map("read_at")
+
+  user             User?            @relation(fields: [sentToUserId], references: [id])
+
+  @@map("notifications")
+}
+
+model NotificationSettings {
+  id               Int              @id @default(autoincrement())
+  userId           Int              @map("user_id")
+  notificationType NotificationType @map("notification_type")
+  daysBefore       Int              @default(30) @map("days_before")
+  notifyViaEmail   Boolean          @default(true) @map("notify_via_email")
+  notifyViaSms     Boolean          @default(false) @map("notify_via_sms")
+  notifyInApp      Boolean          @default(true) @map("notify_in_app")
+  isEnabled        Boolean          @default(true) @map("is_enabled")
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+model ActivityLog {
+  id          Int        @id @default(autoincrement())
+  userId      Int?       @map("user_id")
+  actionType  ActionType @map("action_type")
+  entityType  EntityType @map("entity_type")
+  entityId    Int?       @map("entity_id")
+  entityName  String?    @map("entity_name")
+  description String?
+  oldValues   String?    @map("old_values")
+  newValues   String?    @map("new_values")
+  ipAddress   String?    @map("ip_address")
+  userAgent   String?    @map("user_agent")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  user        User?      @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+model Tag {
+  id          Int         @id @default(autoincrement())
+  tagName     String      @unique @map("tag_name")
+  tagColor    String?     @map("tag_color")
+  description String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  entityTags  EntityTag[]
+
+  @@map("tags")
+}
+
+model EntityTag {
+  id         Int        @id @default(autoincrement())
+  tagId      Int        @map("tag_id")
+  entityType EntityType @map("entity_type")
+  entityId   Int        @map("entity_id")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  tag        Tag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@map("entity_tags")
+}
+
+model Document {
+  id           Int          @id @default(autoincrement())
+  entityType   EntityType   @map("entity_type")
+  entityId     Int          @map("entity_id")
+  documentType DocumentType @map("document_type")
+  fileName     String       @map("file_name")
+  filePath     String       @map("file_path")
+  fileSizeKb   Float?       @map("file_size_kb")
+  mimeType     String?      @map("mime_type")
+  uploadedBy   Int?         @map("uploaded_by")
+  description  String?
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  uploader     User?        @relation(fields: [uploadedBy], references: [id])
+
+  @@map("documents")
+}
+
+model MaintenanceSchedule {
+  id                 Int               @id @default(autoincrement())
+  entityType         EntityType        @map("entity_type")
+  entityId           Int               @map("entity_id")
+  maintenanceType    MaintenanceType   @map("maintenance_type")
+  scheduleFrequency  ScheduleFrequency @map("schedule_frequency")
+  scheduleTime       String?           @map("schedule_time")
+  scheduleDayOfWeek  Int?              @map("schedule_day_of_week")
+  scheduleDayOfMonth Int?              @map("schedule_day_of_month")
+  lastRunDate        DateTime?         @map("last_run_date")
+  nextRunDate        DateTime?         @map("next_run_date")
+  isActive           Boolean           @default(true) @map("is_active")
+  notes              String?
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  logs               MaintenanceLogs[]
+
+  @@map("maintenance_schedules")
+}
+
+model MaintenanceLogs {
+  id              Int                   @id @default(autoincrement())
+  scheduleId      Int?                  @map("schedule_id")
+  entityType      EntityType            @map("entity_type")
+  entityId        Int                   @map("entity_id")
+  maintenanceType MaintenanceType       @map("maintenance_type")
+  status          MaintenanceStatus
+  performedBy     Int?                  @map("performed_by")
+  startTime       DateTime?             @map("start_time")
+  endTime         DateTime?             @map("end_time")
+  durationMinutes Int?                  @map("duration_minutes")
+  details         String?
+  errorMessage    String?               @map("error_message")
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  schedule        MaintenanceSchedule?  @relation(fields: [scheduleId], references: [id])
+  performer       User?                 @relation(fields: [performedBy], references: [id])
+
+  @@map("maintenance_logs")
+}
+
+model SecurityIncident {
+  id           Int            @id @default(autoincrement())
+  entityType   EntityType     @map("entity_type")
+  entityId     Int            @map("entity_id")
+  incidentType IncidentType   @map("incident_type")
+  severity     SeverityLevel
+  status       IncidentStatus
+  detectedAt   DateTime       @default(now()) @map("detected_at")
+  resolvedAt   DateTime?      @map("resolved_at")
+  description  String?
+  actionsTaken String?        @map("actions_taken")
+  reportedBy   Int?           @map("reported_by")
+  assignedTo   Int?           @map("assigned_to")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  reporter     User?          @relation("IncidentReporter", fields: [reportedBy], references: [id])
+  assignee     User?          @relation("IncidentAssignee", fields: [assignedTo], references: [id])
+
+  @@map("security_incidents")
+}
+
+model UptimeCheck {
+  id                   Int           @id @default(autoincrement())
+  websiteId            Int           @map("website_id")
+  checkUrl             String        @map("check_url")
+  checkIntervalMinutes Int           @map("check_interval_minutes")
+  timeoutSeconds       Int           @map("timeout_seconds")
+  expectedStatusCode   Int           @default(200) @map("expected_status_code")
+  isActive             Boolean       @default(true) @map("is_active")
+  lastCheckAt          DateTime?     @map("last_check_at")
+  lastStatus           UptimeStatus? @map("last_status")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  website              Website       @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  logs                 UptimeLog[]
+
+  @@map("uptime_checks")
+}
+
+model UptimeLog {
+  id             Int          @id @default(autoincrement())
+  uptimeCheckId  Int          @map("uptime_check_id")
+  status         UptimeStatus
+  responseTimeMs Int?         @map("response_time_ms")
+  statusCode     Int?         @map("status_code")
+  errorMessage   String?      @map("error_message")
+  checkedAt      DateTime     @default(now()) @map("checked_at")
+
+  uptimeCheck    UptimeCheck  @relation(fields: [uptimeCheckId], references: [id], onDelete: Cascade)
+
+  @@map("uptime_logs")
+}
+
+model ApiKey {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  keyName    String    @map("key_name")
+  apiKey     String    @unique @map("api_key")
+  permissions String?
+  isActive   Boolean   @default(true) @map("is_active")
+  lastUsedAt DateTime? @map("last_used_at")
+  expiresAt  DateTime? @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model SystemSettings {
+  id           Int         @id @default(autoincrement())
+  settingKey   String      @unique @map("setting_key")
+  settingValue String?     @map("setting_value")
+  settingType  SettingType @map("setting_type")
+  description  String?
+  isPublic     Boolean     @default(false) @map("is_public")
+  updatedBy    Int?        @map("updated_by")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  updater      User?       @relation(fields: [updatedBy], references: [id])
+
+  @@map("system_settings")
+}

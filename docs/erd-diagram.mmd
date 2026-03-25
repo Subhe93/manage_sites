@@ -1,0 +1,619 @@
+erDiagram
+    %% Core User Management
+    USERS ||--o{ CLIENTS : creates
+    USERS ||--o{ USER_PERMISSIONS : has
+    USERS ||--o{ NOTIFICATION_SETTINGS : configures
+    USERS ||--o{ NOTIFICATIONS : receives
+    USERS ||--o{ ACTIVITY_LOGS : performs
+    USERS ||--o{ SECURITY_INCIDENTS : "reports/assigned"
+    USERS ||--o{ DOCUMENTS : uploads
+    USERS ||--o{ MAINTENANCE_LOGS : performs
+    USERS ||--o{ API_KEYS : owns
+    USERS ||--o{ SYSTEM_SETTINGS : updates
+
+    USERS {
+        int id PK
+        string username UK
+        string email UK
+        string password_hash
+        string full_name
+        enum role "super_admin,admin,developer,client,viewer"
+        boolean is_active
+        datetime last_login
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Client Management
+    CLIENTS ||--o{ DOMAINS : owns
+    CLIENTS ||--o{ WEBSITES : owns
+
+    CLIENTS {
+        int id PK
+        string client_name
+        string company_name
+        string email
+        string phone
+        string address
+        string country
+        enum status "active,suspended,inactive"
+        text notes
+        int created_by FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Service Providers
+    SERVICE_PROVIDERS ||--o{ DOMAINS : "registers(registrar)"
+    SERVICE_PROVIDERS ||--o{ SERVERS : provides
+
+    SERVICE_PROVIDERS {
+        int id PK
+        string provider_name
+        enum provider_type "registrar,hosting,cdn,ssl,other"
+        string website_url
+        string support_email
+        string support_phone
+        string api_endpoint
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Domain Management
+    DOMAINS ||--o{ DOMAIN_COSTS : has
+    DOMAINS ||--o{ WHOIS_HISTORY : tracks
+    DOMAINS ||--o{ WEBSITES : hosts
+    DOMAINS ||--o{ CLOUDFLARE_DOMAINS : uses
+    DOMAINS ||--o{ GOOGLE_ADS_CAMPAIGNS : advertises
+    DOMAINS ||--o{ GOOGLE_SEARCH_CONSOLE_PROPERTIES : verifies
+
+    DOMAINS {
+        int id PK
+        string domain_name UK
+        string tld
+        enum status "active,expired,pending,suspended,deleted"
+        int registrar_id FK
+        int client_id FK
+        date registration_date
+        date expiry_date
+        boolean auto_renew
+        int renewal_notification_days
+        boolean whois_privacy
+        string nameservers
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    DOMAIN_COSTS {
+        int id PK
+        int domain_id FK
+        decimal cost_amount
+        string currency
+        enum billing_cycle "monthly,yearly,2years,3years,5years"
+        date purchase_date
+        date next_billing_date
+        string payment_method
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    WHOIS_HISTORY {
+        int id PK
+        int domain_id FK
+        string registrant_name
+        string registrant_email
+        string registrant_organization
+        string admin_contact
+        string tech_contact
+        json whois_data
+        datetime captured_at
+    }
+
+    %% Server Management
+    SERVERS ||--o{ SERVER_ACCOUNTS : contains
+    SERVERS ||--o{ SERVER_COSTS : incurs
+    SERVERS ||--o{ SERVER_MONITORING : monitors
+
+    SERVERS {
+        int id PK
+        string server_name
+        int provider_id FK
+        enum server_type "shared,vps,dedicated,cloud"
+        string ip_address
+        string location
+        string operating_system
+        enum control_panel "cpanel,plesk,directadmin,custom,none"
+        string control_panel_url
+        int cpu_cores
+        int ram_gb
+        int storage_gb
+        int bandwidth_gb
+        enum status "active,maintenance,suspended,terminated"
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    SERVER_ACCOUNTS ||--o{ WEBSITES : hosts
+
+    SERVER_ACCOUNTS {
+        int id PK
+        int server_id FK
+        string account_name
+        string username
+        string password_encrypted
+        enum access_level "root,admin,user,ftp_only"
+        string control_panel_url
+        int ssh_port
+        int ftp_port
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    SERVER_COSTS {
+        int id PK
+        int server_id FK
+        decimal cost_amount
+        string currency
+        enum billing_cycle "monthly,yearly,2years,3years,5years"
+        date activation_date
+        date next_billing_date
+        boolean auto_renew
+        string payment_method
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    SERVER_MONITORING {
+        int id PK
+        int server_id FK
+        decimal cpu_usage
+        decimal ram_usage
+        decimal storage_usage
+        decimal bandwidth_usage
+        decimal uptime_percentage
+        int response_time_ms
+        datetime recorded_at
+    }
+
+    %% Website Management
+    WEBSITES ||--o{ WEBSITE_CREDENTIALS : has
+    WEBSITES ||--o{ WEBSITE_COSTS : incurs
+    WEBSITES ||--o{ REPOSITORIES : linked
+    WEBSITES ||--o{ GOOGLE_ADS_CAMPAIGNS : promotes
+    WEBSITES ||--o{ GOOGLE_SEARCH_CONSOLE_PROPERTIES : tracks
+    WEBSITES ||--o{ GOOGLE_TAG_MANAGER_CONTAINERS : uses
+    WEBSITES ||--o{ UPTIME_CHECKS : monitors
+
+    WEBSITES {
+        int id PK
+        string website_name
+        int domain_id FK
+        int client_id FK
+        int server_account_id FK
+        enum website_type "wordpress,spa,custom,mobile_app,static,ecommerce"
+        string framework
+        enum environment "development,staging,production"
+        string website_url
+        string admin_url
+        string api_endpoint
+        string database_name
+        string database_type
+        enum status "active,maintenance,suspended,archived"
+        text description
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    WEBSITE_CREDENTIALS {
+        int id PK
+        int website_id FK
+        enum credential_type "admin,ftp,database,api,ssh,other"
+        string username
+        string password_encrypted
+        string access_url
+        json additional_info
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    WEBSITE_COSTS {
+        int id PK
+        int website_id FK
+        decimal cost_amount
+        string currency
+        enum billing_cycle "monthly,yearly,2years,3years,5years,one_time"
+        enum cost_type "hosting,maintenance,license,plugin,theme,other"
+        date start_date
+        date next_billing_date
+        boolean auto_renew
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Custom Fields System
+    CUSTOM_FIELD_DEFINITIONS ||--o{ CUSTOM_FIELD_VALUES : defines
+
+    CUSTOM_FIELD_DEFINITIONS {
+        int id PK
+        enum entity_type "website,domain,server,client"
+        string field_name
+        string field_label
+        enum field_type "text,textarea,number,date,select,radio,checkbox,url,email"
+        json field_options
+        boolean is_required
+        string default_value
+        int display_order
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    CUSTOM_FIELD_VALUES {
+        int id PK
+        int field_definition_id FK
+        enum entity_type "website,domain,server,client"
+        int entity_id
+        string field_value
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Cloudflare Integration
+    CLOUDFLARE_ACCOUNTS ||--o{ CLOUDFLARE_DOMAINS : manages
+
+    CLOUDFLARE_ACCOUNTS {
+        int id PK
+        string account_name
+        string account_email
+        string account_id
+        string api_key_encrypted
+        string api_token_encrypted
+        enum status "active,inactive,suspended"
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    CLOUDFLARE_DOMAINS {
+        int id PK
+        int domain_id FK
+        int cloudflare_account_id FK
+        string zone_id
+        string nameservers
+        enum ssl_mode "off,flexible,full,strict"
+        enum cache_level "aggressive,basic,simplified"
+        enum security_level "off,essentially_off,low,medium,high,under_attack"
+        boolean is_active
+        datetime activated_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Google Ads Integration
+    GOOGLE_ADS_ACCOUNTS ||--o{ GOOGLE_ADS_CAMPAIGNS : runs
+
+    GOOGLE_ADS_ACCOUNTS {
+        int id PK
+        string account_name
+        string account_email
+        string customer_id
+        json api_credentials
+        enum status "active,inactive,suspended"
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    GOOGLE_ADS_CAMPAIGNS {
+        int id PK
+        int google_ads_account_id FK
+        int website_id FK
+        int domain_id FK
+        string campaign_name
+        string campaign_id
+        enum campaign_type "search,display,video,shopping,app,smart,performance_max"
+        decimal budget_amount
+        string currency
+        enum status "enabled,paused,removed"
+        date start_date
+        date end_date
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Google Search Console
+    GOOGLE_SEARCH_CONSOLE_ACCOUNTS ||--o{ GOOGLE_SEARCH_CONSOLE_PROPERTIES : owns
+
+    GOOGLE_SEARCH_CONSOLE_ACCOUNTS {
+        int id PK
+        string account_name
+        string account_email
+        json api_credentials
+        enum status "active,inactive"
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    GOOGLE_SEARCH_CONSOLE_PROPERTIES {
+        int id PK
+        int gsc_account_id FK
+        int website_id FK
+        int domain_id FK
+        string property_url
+        enum property_type "domain,url_prefix"
+        enum verification_method "html_file,html_tag,google_analytics,google_tag_manager,dns"
+        boolean is_verified
+        datetime verified_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Google Tag Manager
+    GOOGLE_TAG_MANAGER_ACCOUNTS ||--o{ GOOGLE_TAG_MANAGER_CONTAINERS : contains
+
+    GOOGLE_TAG_MANAGER_ACCOUNTS {
+        int id PK
+        string account_name
+        string account_email
+        string account_id
+        json api_credentials
+        enum status "active,inactive"
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    GOOGLE_TAG_MANAGER_CONTAINERS {
+        int id PK
+        int gtm_account_id FK
+        int website_id FK
+        string container_name
+        string container_id
+        string container_public_id
+        enum container_type "web,amp,android,ios,server"
+        int tags_count
+        int triggers_count
+        int variables_count
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Google Analytics
+    GOOGLE_ANALYTICS_ACCOUNTS {
+        int id PK
+        string account_name
+        string account_email
+        string account_id
+        string property_id
+        string measurement_id
+        json api_credentials
+        enum analytics_version "ua,ga4"
+        enum status "active,inactive"
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Repository Management
+    REPOSITORIES {
+        int id PK
+        int website_id FK
+        enum repository_type "github,gitlab,bitbucket,other"
+        string repository_url
+        string repository_name
+        string branch_name
+        string access_token_encrypted
+        boolean is_private
+        string last_commit_hash
+        datetime last_commit_date
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Permissions System
+    USER_PERMISSIONS {
+        int id PK
+        int user_id FK
+        enum entity_type "domain,website,server,client,all"
+        int entity_id
+        enum permission_level "view,edit,admin,owner"
+        datetime granted_at
+        int granted_by FK
+    }
+
+    %% Notification System
+    NOTIFICATIONS {
+        int id PK
+        enum notification_type "domain_expiry,ssl_expiry,server_billing,website_billing,backup_failed,server_down,resource_limit,security_alert,other"
+        enum entity_type "domain,website,server,ssl,backup,other"
+        int entity_id
+        string title
+        text message
+        enum severity "info,warning,critical"
+        boolean is_read
+        int sent_to_user_id FK
+        enum sent_via "in_app,email,sms,all"
+        datetime created_at
+        datetime read_at
+    }
+
+    NOTIFICATION_SETTINGS {
+        int id PK
+        int user_id FK
+        enum notification_type "domain_expiry,ssl_expiry,server_billing,website_billing,backup_failed,server_down,resource_limit,security_alert,other"
+        int days_before
+        boolean notify_via_email
+        boolean notify_via_sms
+        boolean notify_in_app
+        boolean is_enabled
+    }
+
+    %% Activity Logging
+    ACTIVITY_LOGS {
+        int id PK
+        int user_id FK
+        enum action_type "create,update,delete,login,logout,view,export,import"
+        enum entity_type "domain,website,server,client,user,backup,ssl,service,other"
+        int entity_id
+        string entity_name
+        text description
+        json old_values
+        json new_values
+        string ip_address
+        string user_agent
+        datetime created_at
+    }
+
+    %% Security Management
+    SECURITY_INCIDENTS {
+        int id PK
+        enum entity_type "website,server,domain"
+        int entity_id
+        enum incident_type "malware,hack,ddos,data_breach,unauthorized_access,other"
+        enum severity "low,medium,high,critical"
+        enum status "open,investigating,resolved,closed"
+        datetime detected_at
+        datetime resolved_at
+        text description
+        text actions_taken
+        int reported_by FK
+        int assigned_to FK
+        datetime created_at
+        datetime updated_at
+    }
+
+    %% Tagging System
+    TAGS ||--o{ ENTITY_TAGS : categorizes
+
+    TAGS {
+        int id PK
+        string tag_name UK
+        string tag_color
+        text description
+        datetime created_at
+    }
+
+    ENTITY_TAGS {
+        int id PK
+        int tag_id FK
+        enum entity_type "domain,website,server,client,project"
+        int entity_id
+        datetime created_at
+    }
+
+    %% Document Management
+    DOCUMENTS {
+        int id PK
+        enum entity_type "domain,website,server,client,invoice,other"
+        int entity_id
+        enum document_type "contract,invoice,receipt,certificate,backup,report,other"
+        string file_name
+        string file_path
+        decimal file_size_kb
+        string mime_type
+        int uploaded_by FK
+        text description
+        datetime created_at
+    }
+
+    %% Maintenance System
+    MAINTENANCE_SCHEDULES ||--o{ MAINTENANCE_LOGS : generates
+
+    MAINTENANCE_SCHEDULES {
+        int id PK
+        enum entity_type "website,server,domain"
+        int entity_id
+        enum maintenance_type "update,backup,security_scan,performance_check,other"
+        enum schedule_frequency "daily,weekly,monthly,quarterly,yearly,custom"
+        time schedule_time
+        int schedule_day_of_week
+        int schedule_day_of_month
+        datetime last_run_date
+        datetime next_run_date
+        boolean is_active
+        text notes
+        datetime created_at
+        datetime updated_at
+    }
+
+    MAINTENANCE_LOGS {
+        int id PK
+        int schedule_id FK
+        enum entity_type "website,server,domain"
+        int entity_id
+        enum maintenance_type "update,backup,security_scan,performance_check,other"
+        enum status "success,failed,partial,skipped"
+        int performed_by FK
+        datetime start_time
+        datetime end_time
+        int duration_minutes
+        text details
+        text error_message
+        datetime created_at
+    }
+
+    %% Uptime Monitoring
+    UPTIME_CHECKS ||--o{ UPTIME_LOGS : records
+
+    UPTIME_CHECKS {
+        int id PK
+        int website_id FK
+        string check_url
+        int check_interval_minutes
+        int timeout_seconds
+        int expected_status_code
+        boolean is_active
+        datetime last_check_at
+        enum last_status "up,down,degraded"
+        datetime created_at
+        datetime updated_at
+    }
+
+    UPTIME_LOGS {
+        int id PK
+        int uptime_check_id FK
+        enum status "up,down,degraded"
+        int response_time_ms
+        int status_code
+        text error_message
+        datetime checked_at
+    }
+
+    %% API Management
+    API_KEYS {
+        int id PK
+        int user_id FK
+        string key_name
+        string api_key UK
+        json permissions
+        boolean is_active
+        datetime last_used_at
+        datetime expires_at
+        datetime created_at
+    }
+
+    %% System Configuration
+    SYSTEM_SETTINGS {
+        int id PK
+        string setting_key UK
+        string setting_value
+        enum setting_type "string,number,boolean,json"
+        text description
+        boolean is_public
+        int updated_by FK
+        datetime created_at
+        datetime updated_at
+    }
