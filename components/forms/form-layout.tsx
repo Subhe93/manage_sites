@@ -1,23 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { AppLayout } from '@/components/layout/app-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 
 interface FormLayoutProps {
   title: string;
   description: string;
   backHref: string;
   backLabel: string;
+  loading?: boolean;
   onSubmit: (e: React.FormEvent) => void;
   children: React.ReactNode;
 }
 
-export function FormLayout({ title, description, backHref, backLabel, onSubmit, children }: FormLayoutProps) {
+export function FormLayout({ title, description, backHref, backLabel, loading, onSubmit, children }: FormLayoutProps) {
   return (
-    <AppLayout>
       <div className="min-h-screen">
         <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="px-6 py-4">
@@ -36,18 +35,17 @@ export function FormLayout({ title, description, backHref, backLabel, onSubmit, 
           <div className="max-w-4xl space-y-6">
             {children}
             <div className="flex items-center gap-3 pt-2">
-              <Button type="submit" className="gap-2">
-                <Save className="h-4 w-4" />
-                Save
+              <Button type="submit" className="gap-2" disabled={loading}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {loading ? 'Saving...' : 'Save'}
               </Button>
               <Link href={backHref}>
-                <Button type="button" variant="outline">Cancel</Button>
+                <Button type="button" variant="outline" disabled={loading}>Cancel</Button>
               </Link>
             </div>
           </div>
         </form>
       </div>
-    </AppLayout>
   );
 }
 

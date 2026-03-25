@@ -1,132 +1,218 @@
-/**
- * Custom React Hooks للتعامل مع الـ APIs
- */
-
-'use client';
-
 import { useState, useEffect, useCallback } from 'react';
-import { DomainsApi, WebsitesApi } from '@/lib/api/client';
+import { toast } from 'sonner';
 
-/**
- * Hook لجلب النطاقات
- */
-export function useDomains(params?: {
+export interface Domain {
+  id: number;
+  domainName: string;
+  tld: string | null;
+  status: string;
+  registrarId: number | null;
+  clientId: number | null;
+  registrationDate: string | null;
+  expiryDate: string | null;
+  autoRenew: boolean;
+  renewalNotificationDays: number;
+  whoisPrivacy: boolean;
+  nameservers: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  client?: {
+    id: number;
+    clientName: string;
+    companyName: string | null;
+  };
+  registrar?: {
+    id: number;
+    providerName: string;
+    providerType: string;
+  };
+  _count?: {
+    costs: number;
+    websites: number;
+  };
+}
+
+export interface DomainFilters {
   page?: number;
   pageSize?: number;
   status?: string;
   clientId?: number;
-}) {
-  const [domains, setDomains] = useState<any[]>([]);
-  const [pagination, setPagination] = useState<any>(null);
+  registrarId?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export function useDomains(filters: DomainFilters = {}) {
+  const [domains, setDomains] = useState<Domain[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0,
+  });
 
   const fetchDomains = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await DomainsApi.getAll(params);
-      setDomains(result.data || []);
-      setPagination(result.pagination);
+
+      const params = new URLSearchParams();
+      if (filters.page) params.append('page', filters.page.toString());
+      if (filters.pageSize) params.append('pageSize', filters.pageSize.toString());
+      if (filters.status) params.append('status', filters.status);
+      if (filters.clientId) params.append('clientId', filters.clientId.toString());
+      if (filters.registrarId) params.append('registrarId', filters.registrarId.toString());
+      if (filters.search) params.append('search', filters.search);
+      if (filters.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+
+      const response = await fetch(`/api/domains?${params.toString()}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error?.message || 'Failed to fetch domains');
+      }
+
+      setDomains(Array.isArray(result.data) ? result.data : []);
+      setPagination(result.pagination || {
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        totalPages: 0,
+      });
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.message || 'Failed to fetch domains';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [params?.page, params?.pageSize, params?.status, params?.clientId]);
+  }, [
+    filters.page,
+    filters.pageSize,
+    filters.status,
+    filters.clientId,
+    filters.registrarId,
+    filters.search,
+    filters.sortBy,
+    filters.sortOrder,
+  ]);
 
   useEffect(() => {
     fetchDomains();
   }, [fetchDomains]);
 
-  const refresh = () => {
-    fetchDomains();
-  };
-
   return {
     domains,
-    pagination,
     loading,
     error,
-    refresh,
+    pagination,
+    refetch: fetchDomains,
   };
 }
 
-/**
- * Hook لجلب نطاق معين
- */
 export function useDomain(id: number) {
-  const [domain, setDomain] = useState<any>(null);
+  const [domain, setDomain] = useState<Domain | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchDomain = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const result = await DomainsApi.getById(id);
-        setDomain(result.data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchDomain = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`/api/domains/${id}`);
+      const result = await response.json();
 
-    if (id) {
-      fetchDomain();
+      if (!response.ok) {
+        throw new Error(result.error?.message || 'Failed to fetch domain');
+      }
+
+      setDomain(result.data);
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to fetch domain';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   }, [id]);
 
-  return { domain, loading, error };
+  useEffect(() => {
+    if (id) {
+      fetchDomain();
+    }
+  }, [id, fetchDomain]);
+
+  return { domain, loading, error, refetch: fetchDomain };
 }
 
-/**
- * Hook لإنشاء/تحديث/حذف نطاق
- */
 export function useDomainMutations() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const createDomain = async (data: any) => {
+  const createDomain = async (data: Partial<Domain>) => {
     try {
-      setLoading(true);
-      setError(null);
-      const result = await DomainsApi.create(data);
+      const response = await fetch('/api/domains', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error?.message || 'Failed to create domain');
+      }
+
+      toast.success('Domain created successfully');
       return result.data;
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.message || 'Failed to create domain';
+      toast.error(errorMessage);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
-  const updateDomain = async (id: number, data: any) => {
+  const updateDomain = async (id: number, data: Partial<Domain>) => {
     try {
-      setLoading(true);
-      setError(null);
-      const result = await DomainsApi.update(id, data);
+      const response = await fetch(`/api/domains/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error?.message || 'Failed to update domain');
+      }
+
+      toast.success('Domain updated successfully');
       return result.data;
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.message || 'Failed to update domain';
+      toast.error(errorMessage);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
   const deleteDomain = async (id: number) => {
     try {
-      setLoading(true);
-      setError(null);
-      await DomainsApi.delete(id);
+      const response = await fetch(`/api/domains/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error?.message || 'Failed to delete domain');
+      }
+
+      toast.success('Domain deleted successfully');
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.message || 'Failed to delete domain';
+      toast.error(errorMessage);
       throw err;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -134,178 +220,37 @@ export function useDomainMutations() {
     createDomain,
     updateDomain,
     deleteDomain,
-    loading,
-    error,
   };
 }
 
-/**
- * Hook لإحصائيات النطاقات
- */
 export function useDomainStats() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const result = await DomainsApi.getStats();
-        setStats(result.data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch('/api/domains/stats');
+      const result = await response.json();
 
-    fetchStats();
+      if (!response.ok) {
+        throw new Error(result.error?.message || 'Failed to fetch stats');
+      }
+
+      setStats(result.data);
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to fetch stats';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { stats, loading, error };
-}
-
-/**
- * Hook لجلب المواقع
- */
-export function useWebsites(params?: {
-  page?: number;
-  pageSize?: number;
-  status?: string;
-  clientId?: number;
-  type?: string;
-  environment?: string;
-  search?: string;
-}) {
-  const [websites, setWebsites] = useState<any[]>([]);
-  const [pagination, setPagination] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchWebsites = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await WebsitesApi.getAll(params);
-      setWebsites(result.data || []);
-      setPagination(result.pagination);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    params?.page,
-    params?.pageSize,
-    params?.status,
-    params?.clientId,
-    params?.type,
-    params?.environment,
-    params?.search,
-  ]);
-
   useEffect(() => {
-    fetchWebsites();
-  }, [fetchWebsites]);
+    fetchStats();
+  }, [fetchStats]);
 
-  const refresh = () => {
-    fetchWebsites();
-  };
-
-  return {
-    websites,
-    pagination,
-    loading,
-    error,
-    refresh,
-  };
-}
-
-/**
- * Hook لجلب موقع معين
- */
-export function useWebsite(id: number) {
-  const [website, setWebsite] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchWebsite = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const result = await WebsitesApi.getById(id);
-        setWebsite(result.data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchWebsite();
-    }
-  }, [id]);
-
-  return { website, loading, error };
-}
-
-/**
- * Hook لإنشاء/تحديث/حذف موقع
- */
-export function useWebsiteMutations() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const createWebsite = async (data: any) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await WebsitesApi.create(data);
-      return result.data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateWebsite = async (id: number, data: any) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await WebsitesApi.update(id, data);
-      return result.data;
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const deleteWebsite = async (id: number) => {
-    try {
-      setLoading(true);
-      setError(null);
-      await WebsitesApi.delete(id);
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return {
-    createWebsite,
-    updateWebsite,
-    deleteWebsite,
-    loading,
-    error,
-  };
+  return { stats, loading, error, refetch: fetchStats };
 }

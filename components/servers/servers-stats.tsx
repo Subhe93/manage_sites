@@ -1,57 +1,76 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Server, Activity, TriangleAlert as AlertTriangle, Cpu, HardDrive } from 'lucide-react';
-import { mockServers, mockServerMonitoring } from '@/lib/mock-data';
-import type { ServerStatus } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useServerStats } from '@/hooks/use-servers';
+import { Server, HardDrive, Cloud, Database, Activity, AlertCircle, Wrench } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface ServersStatsProps {
-  activeFilter: ServerStatus | 'all';
-  onFilterChange: (filter: ServerStatus | 'all') => void;
-}
+export function ServersStats() {
+  const { stats, loading } = useServerStats();
 
-export function ServersStats({ activeFilter, onFilterChange }: ServersStatsProps) {
-  const total = mockServers.length;
-  const active = mockServers.filter((s) => s.status === 'active').length;
-  const maintenance = mockServers.filter((s) => s.status === 'maintenance').length;
+  if (loading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
-  const avgCpu = mockServerMonitoring
-    .filter((m) => m.cpu_usage > 0)
-    .reduce((sum, m, _, arr) => sum + m.cpu_usage / arr.length, 0);
+  const typeIcons: Record<string, any> = {
+    shared: HardDrive,
+    vps: Server,
+    dedicated: Database,
+    cloud: Cloud,
+  };
 
-  const avgRam = mockServerMonitoring
-    .filter((m) => m.ram_usage > 0)
-    .reduce((sum, m, _, arr) => sum + m.ram_usage / arr.length, 0);
+  const typeLabels: Record<string, string> = {
+    shared: 'Shared',
+    vps: 'VPS',
+    dedicated: 'Dedicated',
+    cloud: 'Cloud',
+  };
 
-  const cards = [
-    { label: 'All Servers', value: total, icon: Server, filter: 'all' as const, color: 'text-primary', bg: 'bg-primary/10', suffix: '' },
-    { label: 'Active', value: active, icon: Activity, filter: 'active' as const, color: 'text-emerald-600', bg: 'bg-emerald-500/10', suffix: '' },
-    { label: 'Maintenance', value: maintenance, icon: AlertTriangle, filter: 'maintenance' as const, color: 'text-amber-600', bg: 'bg-amber-500/10', suffix: '' },
-    { label: 'Avg CPU', value: avgCpu.toFixed(1), icon: Cpu, filter: 'all' as const, color: 'text-sky-600', bg: 'bg-sky-500/10', suffix: '%' },
-    { label: 'Avg RAM', value: avgRam.toFixed(1), icon: HardDrive, filter: 'all' as const, color: 'text-teal-600', bg: 'bg-teal-500/10', suffix: '%' },
-  ];
+  const statusIcons: Record<string, any> = {
+    active: Activity,
+    maintenance: Wrench,
+    suspended: AlertCircle,
+    terminated: AlertCircle,
+  };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-      {cards.map((card) => {
-        const Icon = card.icon;
-        const isSelected = activeFilter === card.filter && card.label !== 'Avg CPU' && card.label !== 'Avg RAM';
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Servers</CardTitle>
+          <Server className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats?.total || 0}</div>
+        </CardContent>
+      </Card>
+
+      {Object.entries(stats?.byType || {}).map(([type, count]) => {
+        const Icon = typeIcons[type] || Server;
         return (
-          <Card
-            key={card.label}
-            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
-              isSelected ? 'ring-2 ring-primary shadow-md' : ''
-            }`}
-            onClick={() => onFilterChange(card.filter)}
-          >
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.bg}`}>
-                <Icon className={`h-5 w-5 ${card.color}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{card.value}{card.suffix}</p>
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-              </div>
+          <Card key={type}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                {typeLabels[type] || type}
+              </CardTitle>
+              <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{count}</div>
             </CardContent>
           </Card>
         );

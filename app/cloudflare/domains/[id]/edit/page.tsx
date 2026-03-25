@@ -1,31 +1,77 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Globe } from 'lucide-react';
+import { Globe, Loader2 } from 'lucide-react';
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockCloudflareDomains, mockDomains, mockCloudflareAccounts } from '@/lib/mock-data';
+import { useCloudflareDomain, useCloudflareDomainMutations } from '@/hooks/use-cloudflare-domains';
 
 export default function EditCloudflareDomainPage() {
   const params = useParams();
+  const router = useRouter();
   const id = Number(params.id);
-  const cfDomain = mockCloudflareDomains.find((d) => d.id === id);
+  const { domain: cfDomain, loading: fetchLoading, error } = useCloudflareDomain(id);
+  const { updateDomain } = useCloudflareDomainMutations();
+  const [saving, setSaving] = useState(false);
 
-  const [domainId, setDomainId] = useState(cfDomain ? String(cfDomain.domain_id) : '');
-  const [cloudflareAccountId, setCloudflareAccountId] = useState(cfDomain ? String(cfDomain.cloudflare_account_id) : '');
-  const [zoneId, setZoneId] = useState(cfDomain?.zone_id ?? '');
-  const [nameservers, setNameservers] = useState(cfDomain?.nameservers ?? '');
-  const [sslMode, setSslMode] = useState(cfDomain?.ssl_mode ?? '');
-  const [cacheLevel, setCacheLevel] = useState(cfDomain?.cache_level ?? '');
-  const [securityLevel, setSecurityLevel] = useState(cfDomain?.security_level ?? '');
-  const [isActive, setIsActive] = useState(cfDomain?.is_active ?? false);
-  const [activatedAt, setActivatedAt] = useState(cfDomain?.activated_at ?? '');
+  const [domainId, setDomainId] = useState('');
+  const [cloudflareAccountId, setCloudflareAccountId] = useState('');
+  const [zoneId, setZoneId] = useState('');
+  const [nameservers, setNameservers] = useState('');
+  const [sslMode, setSslMode] = useState('');
+  const [cacheLevel, setCacheLevel] = useState('');
+  const [securityLevel, setSecurityLevel] = useState('');
+  const [isActive, setIsActive] = useState(false);
+  const [activatedAt, setActivatedAt] = useState('');
 
-  if (!cfDomain) {
+  // Fetch domains and accounts for selects
+  const [allDomains, setAllDomains] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch('/api/domains?pageSize=100')
+      .then(res => res.json())
+      .then(result => {
+        if (result.data) setAllDomains(Array.isArray(result.data) ? result.data : []);
+      })
+      .catch(() => {});
+
+    fetch('/api/cloudflare/accounts?pageSize=100')
+      .then(res => res.json())
+      .then(result => {
+        if (result.data) setAccounts(Array.isArray(result.data) ? result.data : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (cfDomain) {
+      setDomainId(String(cfDomain.domainId));
+      setCloudflareAccountId(String(cfDomain.cloudflareAccountId));
+      setZoneId(cfDomain.zoneId || '');
+      setNameservers(cfDomain.nameservers || '');
+      setSslMode(cfDomain.sslMode || '');
+      setCacheLevel(cfDomain.cacheLevel || '');
+      setSecurityLevel(cfDomain.securityLevel || '');
+      setIsActive(cfDomain.isActive);
+      setActivatedAt(cfDomain.activatedAt ? new Date(cfDomain.activatedAt).toISOString().split('T')[0] : '');
+    }
+  }, [cfDomain]);
+
+  if (fetchLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span>Loading...</span>
+      </div>
+    );
+  }
+
+  if (error || !cfDomain) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <h1 className="text-2xl font-bold">Cloudflare Domain Not Found</h1>
@@ -36,31 +82,37 @@ export default function EditCloudflareDomainPage() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({
-      id,
-      domain_id: domainId,
-      cloudflare_account_id: cloudflareAccountId,
-      zone_id: zoneId,
-      nameservers,
-      ssl_mode: sslMode,
-      cache_level: cacheLevel,
-      security_level: securityLevel,
-      is_active: isActive,
-      activated_at: activatedAt,
-    });
+    try {
+      setSaving(true);
+      await updateDomain(id, {
+        domainId: parseInt(domainId),
+        cloudflareAccountId: parseInt(cloudflareAccountId),
+        zoneId: zoneId || null,
+        nameservers: nameservers || null,
+        sslMode,
+        cacheLevel,
+        securityLevel,
+        isActive,
+        activatedAt: activatedAt || null,
+      });
+      router.push('/cloudflare/domains');
+    } catch {
+      // Error handled in hook
+    } finally {
+      setSaving(false);
+    }
   };
-
-  const linkedDomain = mockDomains.find((d) => d.id === cfDomain.domain_id);
 
   return (
     <FormLayout
       title="Edit Cloudflare Domain"
-      description={`Editing Cloudflare configuration for: ${linkedDomain?.domain_name ?? 'Unknown'}`}
+      description={`Editing Cloudflare configuration for: ${cfDomain.domain?.domainName ?? 'Unknown'}`}
       backHref="/cloudflare/domains"
       backLabel="Back to Cloudflare Domains"
       onSubmit={handleSubmit}
+      loading={saving}
     >
       <FormSection title="Domain Configuration" icon={<Globe className="h-4 w-4" />}>
         <FormFieldWrapper label="Domain">
@@ -69,9 +121,9 @@ export default function EditCloudflareDomainPage() {
               <SelectValue placeholder="Select domain" />
             </SelectTrigger>
             <SelectContent>
-              {mockDomains.map((domain) => (
+              {allDomains.map((domain) => (
                 <SelectItem key={domain.id} value={String(domain.id)}>
-                  {domain.domain_name}
+                  {domain.domainName}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -83,9 +135,9 @@ export default function EditCloudflareDomainPage() {
               <SelectValue placeholder="Select account" />
             </SelectTrigger>
             <SelectContent>
-              {mockCloudflareAccounts.map((account) => (
+              {accounts.map((account) => (
                 <SelectItem key={account.id} value={String(account.id)}>
-                  {account.account_name}
+                  {account.accountName}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -1,49 +1,61 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Users, UserCheck, UserX, Pause } from 'lucide-react';
-import { mockClients } from '@/lib/mock-data';
-import type { ClientStatus } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useClientStats } from '@/hooks/use-clients';
+import { Users, UserCheck, UserX, UserMinus } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface ClientsStatsProps {
-  activeFilter: ClientStatus | 'all';
-  onFilterChange: (filter: ClientStatus | 'all') => void;
-}
+export function ClientsStats() {
+  const { stats, loading } = useClientStats();
 
-export function ClientsStats({ activeFilter, onFilterChange }: ClientsStatsProps) {
-  const total = mockClients.length;
-  const active = mockClients.filter((c) => c.status === 'active').length;
-  const suspended = mockClients.filter((c) => c.status === 'suspended').length;
-  const inactive = mockClients.filter((c) => c.status === 'inactive').length;
+  if (loading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
-  const cards = [
-    { label: 'All Clients', value: total, icon: Users, filter: 'all' as const, color: 'text-primary', bg: 'bg-primary/10' },
-    { label: 'Active', value: active, icon: UserCheck, filter: 'active' as const, color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
-    { label: 'Suspended', value: suspended, icon: Pause, filter: 'suspended' as const, color: 'text-amber-600', bg: 'bg-amber-500/10' },
-    { label: 'Inactive', value: inactive, icon: UserX, filter: 'inactive' as const, color: 'text-slate-500', bg: 'bg-slate-400/10' },
-  ];
+  const statusConfig: Record<string, { label: string; icon: any; color: string }> = {
+    active: { label: 'Active', icon: UserCheck, color: 'text-green-600' },
+    suspended: { label: 'Suspended', icon: UserX, color: 'text-red-600' },
+    inactive: { label: 'Inactive', icon: UserMinus, color: 'text-gray-600' },
+  };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {cards.map((card) => {
-        const Icon = card.icon;
-        const isSelected = activeFilter === card.filter;
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats?.total || 0}</div>
+        </CardContent>
+      </Card>
+
+      {Object.entries(stats?.byStatus || {}).map(([status, count]) => {
+        const config = statusConfig[status] || { label: status, icon: Users, color: 'text-gray-600' };
+        const Icon = config.icon;
+        
         return (
-          <Card
-            key={card.label}
-            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
-              isSelected ? 'ring-2 ring-primary shadow-md' : ''
-            }`}
-            onClick={() => onFilterChange(card.filter)}
-          >
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.bg}`}>
-                <Icon className={`h-5 w-5 ${card.color}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{card.value}</p>
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-              </div>
+          <Card key={status}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{config.label}</CardTitle>
+              <Icon className={`h-4 w-4 ${config.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{count}</div>
             </CardContent>
           </Card>
         );

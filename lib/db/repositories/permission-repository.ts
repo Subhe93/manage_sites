@@ -1,5 +1,6 @@
 import { BaseRepository } from '../base-repository';
 import { Prisma, UserPermission, EntityType, PermissionLevel } from '@prisma/client';
+import prisma from '@/lib/prisma';
 
 export interface PermissionFilters {
   userId?: number;
@@ -8,15 +9,19 @@ export interface PermissionFilters {
   search?: string;
 }
 
-export class PermissionRepository extends BaseRepository<UserPermission> {
-  constructor() {
-    super('userPermission');
-  }
+export class PermissionRepository extends BaseRepository<
+  UserPermission,
+  Prisma.UserPermissionCreateInput,
+  Prisma.UserPermissionUpdateInput,
+  Prisma.UserPermissionWhereInput
+> {
+  protected model = prisma.userPermission;
 
   async findAllWithFilters(
     filters: PermissionFilters,
     page: number = 1,
-    pageSize: number = 10
+    pageSize: number = 10,
+    orderBy: any = { grantedAt: 'desc' }
   ) {
     const where: Prisma.UserPermissionWhereInput = {};
 
@@ -68,7 +73,7 @@ export class PermissionRepository extends BaseRepository<UserPermission> {
           },
         },
       },
-      orderBy: { grantedAt: 'desc' },
+      orderBy,
     });
   }
 
@@ -101,28 +106,25 @@ export class PermissionRepository extends BaseRepository<UserPermission> {
       ];
     }
 
-    return this.count({ where });
+    return this.count(where);
   }
 
   async findByIdWithRelations(id: number) {
-    return this.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            fullName: true,
-            role: true,
-          },
+    return this.findById(id, {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          fullName: true,
+          role: true,
         },
-        granter: {
-          select: {
-            id: true,
-            username: true,
-            fullName: true,
-          },
+      },
+      granter: {
+        select: {
+          id: true,
+          username: true,
+          fullName: true,
         },
       },
     });
@@ -130,12 +132,12 @@ export class PermissionRepository extends BaseRepository<UserPermission> {
 
   async getStats() {
     const [total, byLevel, byEntityType] = await Promise.all([
-      this.count({}),
-      this.prisma.userPermission.groupBy({
+      this.count(undefined),
+      this.model.groupBy({
         by: ['permissionLevel'],
         _count: true,
       }),
-      this.prisma.userPermission.groupBy({
+      this.model.groupBy({
         by: ['entityType'],
         _count: true,
       }),
@@ -160,12 +162,10 @@ export class PermissionRepository extends BaseRepository<UserPermission> {
     entityId: number | null,
     requiredLevel: PermissionLevel
   ): Promise<boolean> {
-    const permission = await this.findFirst({
-      where: {
-        userId,
-        entityType,
-        entityId,
-      },
+    const permission = await this.findOne({
+      userId,
+      entityType,
+      entityId,
     });
 
     if (!permission) return false;

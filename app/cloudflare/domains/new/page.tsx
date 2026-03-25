@@ -1,37 +1,72 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Globe } from 'lucide-react';
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockDomains, mockCloudflareAccounts } from '@/lib/mock-data';
+import { useCloudflareDomainMutations } from '@/hooks/use-cloudflare-domains';
 
 export default function NewCloudflareDomainPage() {
+  const router = useRouter();
+  const { createDomain } = useCloudflareDomainMutations();
+  const [saving, setSaving] = useState(false);
+
   const [domainId, setDomainId] = useState('');
   const [cloudflareAccountId, setCloudflareAccountId] = useState('');
   const [zoneId, setZoneId] = useState('');
   const [nameservers, setNameservers] = useState('');
-  const [sslMode, setSslMode] = useState('');
-  const [cacheLevel, setCacheLevel] = useState('');
-  const [securityLevel, setSecurityLevel] = useState('');
-  const [isActive, setIsActive] = useState(false);
+  const [sslMode, setSslMode] = useState('full');
+  const [cacheLevel, setCacheLevel] = useState('basic');
+  const [securityLevel, setSecurityLevel] = useState('medium');
+  const [isActive, setIsActive] = useState(true);
   const [activatedAt, setActivatedAt] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch domains and accounts for selects
+  const [domains, setDomains] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch domains
+    fetch('/api/domains?pageSize=100')
+      .then(res => res.json())
+      .then(result => {
+        if (result.data) setDomains(Array.isArray(result.data) ? result.data : []);
+      })
+      .catch(() => {});
+
+    // Fetch Cloudflare accounts
+    fetch('/api/cloudflare/accounts?pageSize=100')
+      .then(res => res.json())
+      .then(result => {
+        if (result.data) setAccounts(Array.isArray(result.data) ? result.data : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({
-      domain_id: domainId,
-      cloudflare_account_id: cloudflareAccountId,
-      zone_id: zoneId,
-      nameservers,
-      ssl_mode: sslMode,
-      cache_level: cacheLevel,
-      security_level: securityLevel,
-      is_active: isActive,
-      activated_at: activatedAt,
-    });
+    try {
+      setSaving(true);
+      await createDomain({
+        domainId: parseInt(domainId),
+        cloudflareAccountId: parseInt(cloudflareAccountId),
+        zoneId: zoneId || null,
+        nameservers: nameservers || null,
+        sslMode,
+        cacheLevel,
+        securityLevel,
+        isActive,
+        activatedAt: activatedAt || null,
+      });
+      router.push('/cloudflare/domains');
+    } catch {
+      // Error handled in hook
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -41,31 +76,32 @@ export default function NewCloudflareDomainPage() {
       backHref="/cloudflare/domains"
       backLabel="Back to Cloudflare Domains"
       onSubmit={handleSubmit}
+      loading={saving}
     >
       <FormSection title="Domain Configuration" icon={<Globe className="h-4 w-4" />}>
-        <FormFieldWrapper label="Domain">
+        <FormFieldWrapper label="Domain" required>
           <Select value={domainId} onValueChange={setDomainId}>
             <SelectTrigger>
               <SelectValue placeholder="Select domain" />
             </SelectTrigger>
             <SelectContent>
-              {mockDomains.map((domain) => (
+              {domains.map((domain) => (
                 <SelectItem key={domain.id} value={String(domain.id)}>
-                  {domain.domain_name}
+                  {domain.domainName}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </FormFieldWrapper>
-        <FormFieldWrapper label="Cloudflare Account">
+        <FormFieldWrapper label="Cloudflare Account" required>
           <Select value={cloudflareAccountId} onValueChange={setCloudflareAccountId}>
             <SelectTrigger>
               <SelectValue placeholder="Select account" />
             </SelectTrigger>
             <SelectContent>
-              {mockCloudflareAccounts.map((account) => (
+              {accounts.map((account) => (
                 <SelectItem key={account.id} value={String(account.id)}>
-                  {account.account_name}
+                  {account.accountName}
                 </SelectItem>
               ))}
             </SelectContent>

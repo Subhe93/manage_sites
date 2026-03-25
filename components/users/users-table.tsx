@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Pencil, Trash2, Eye } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
   AlertDialog,
@@ -41,16 +41,51 @@ interface UsersTableProps {
     role?: string;
     isActive?: boolean;
     search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
   };
   onPageChange: (page: number) => void;
+  onSortChange: (sortBy: string, sortOrder: 'asc' | 'desc') => void;
 }
 
-export function UsersTable({ filters, onPageChange }: UsersTableProps) {
+export function UsersTable({ filters, onPageChange, onSortChange }: UsersTableProps) {
   const router = useRouter();
   const { users, pagination, loading, error, refresh } = useUsers(filters);
   const { deleteUser } = useUserMutations();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+
+  const handleSort = (column: string) => {
+    const newSortOrder = 
+      filters.sortBy === column && filters.sortOrder === 'asc' ? 'desc' : 'asc';
+    
+    onSortChange(column, newSortOrder);
+  };
+
+  const SortableHeader = ({ column, children }: { column: string; children: React.ReactNode }) => {
+    const isSorted = filters.sortBy === column;
+    const sortOrder = filters.sortOrder;
+
+    return (
+      <TableHead 
+        className="cursor-pointer select-none hover:bg-gray-50"
+        onClick={() => handleSort(column)}
+      >
+        <div className="flex items-center gap-2">
+          {children}
+          {isSorted ? (
+            sortOrder === 'asc' ? (
+              <ArrowUp className="h-4 w-4" />
+            ) : (
+              <ArrowDown className="h-4 w-4" />
+            )
+          ) : (
+            <ArrowUpDown className="h-4 w-4 opacity-30" />
+          )}
+        </div>
+      </TableHead>
+    );
+  };
 
   const handleDelete = async () => {
     if (!selectedUserId) return;
@@ -136,13 +171,13 @@ export function UsersTable({ filters, onPageChange }: UsersTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Username</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Full Name</TableHead>
-              <TableHead>Role</TableHead>
+              <SortableHeader column="username">Username</SortableHeader>
+              <SortableHeader column="email">Email</SortableHeader>
+              <SortableHeader column="fullName">Full Name</SortableHeader>
+              <SortableHeader column="role">Role</SortableHeader>
               <TableHead>Status</TableHead>
-              <TableHead>Last Login</TableHead>
-              <TableHead>Created At</TableHead>
+              <SortableHeader column="lastLogin">Last Login</SortableHeader>
+              <SortableHeader column="createdAt">Created At</SortableHeader>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>

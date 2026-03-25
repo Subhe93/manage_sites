@@ -1,102 +1,53 @@
 'use client';
 
-import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { Building2 } from 'lucide-react';
-import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockProviders } from '@/lib/mock-data';
+import { ProviderForm } from '@/components/providers/provider-form';
+import { useProvider } from '@/hooks/use-providers';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function EditProviderPage() {
   const params = useParams();
-  const id = Number(params.id);
-  const provider = mockProviders.find((p) => p.id === id);
+  const id = parseInt(params.id as string);
+  const { provider, loading, error } = useProvider(id);
 
-  const [providerName, setProviderName] = useState(provider?.provider_name ?? '');
-  const [providerType, setProviderType] = useState(provider?.provider_type ?? '');
-  const [websiteUrl, setWebsiteUrl] = useState(provider?.website_url ?? '');
-  const [supportEmail, setSupportEmail] = useState(provider?.support_email ?? '');
-  const [notes, setNotes] = useState(provider?.notes ?? '');
-
-  if (!provider) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <h1 className="text-2xl font-bold">Provider Not Found</h1>
-        <Link href="/providers" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-          Back to Providers
-        </Link>
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="mb-6">
+          <Skeleton className="h-10 w-64 mb-2" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log({
-      id,
-      provider_name: providerName,
-      provider_type: providerType,
-      website_url: websiteUrl,
-      support_email: supportEmail,
-      notes,
-    });
-  };
+  if (error || !provider) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="text-center text-red-600">
+          <p className="text-lg font-semibold">Error loading provider</p>
+          <p className="mt-2">{error || 'Provider not found'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <FormLayout
-      title="Edit Provider"
-      description={`Editing provider: ${provider.provider_name}`}
-      backHref="/providers"
-      backLabel="Back to Providers"
-      onSubmit={handleSubmit}
-    >
-      <FormSection title="Provider Information" icon={<Building2 className="h-4 w-4" />}>
-        <FormFieldWrapper label="Provider Name" required>
-          <Input
-            value={providerName}
-            onChange={(e) => setProviderName(e.target.value)}
-            placeholder="Enter provider name"
-            required
-          />
-        </FormFieldWrapper>
-        <FormFieldWrapper label="Provider Type" required>
-          <Select value={providerType} onValueChange={setProviderType} required>
-            <SelectTrigger>
-              <SelectValue placeholder="Select provider type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="registrar">Registrar</SelectItem>
-              <SelectItem value="hosting">Hosting</SelectItem>
-              <SelectItem value="cdn">CDN</SelectItem>
-              <SelectItem value="ssl">SSL</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormFieldWrapper>
-        <FormFieldWrapper label="Website URL">
-          <Input
-            value={websiteUrl}
-            onChange={(e) => setWebsiteUrl(e.target.value)}
-            placeholder="https://example.com"
-          />
-        </FormFieldWrapper>
-        <FormFieldWrapper label="Support Email">
-          <Input
-            value={supportEmail}
-            onChange={(e) => setSupportEmail(e.target.value)}
-            placeholder="support@example.com"
-          />
-        </FormFieldWrapper>
-        <FormFieldWrapper label="Notes" fullWidth>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes about this provider"
-          />
-        </FormFieldWrapper>
-      </FormSection>
-    </FormLayout>
+    <div className="p-6 max-w-4xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">Edit Service Provider</h1>
+        <p className="text-gray-500 mt-1">Update provider information</p>
+      </div>
+
+      <ProviderForm provider={provider} mode="edit" />
+    </div>
   );
 }

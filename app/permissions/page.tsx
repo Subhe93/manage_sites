@@ -16,6 +16,8 @@ export default function PermissionsPage() {
     permissionLevel: undefined as string | undefined,
     entityType: undefined as string | undefined,
     search: undefined as string | undefined,
+    sortBy: 'grantedAt' as string,
+    sortOrder: 'desc' as 'asc' | 'desc',
   });
 
   const handleFilterChange = (key: string, value: any) => {
@@ -30,6 +32,10 @@ export default function PermissionsPage() {
     setFilters((prev) => ({ ...prev, page }));
   };
 
+  const handleSortChange = (sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setFilters((prev) => ({ ...prev, sortBy, sortOrder, page: 1 }));
+  };
+
   const handleReset = () => {
     setFilters({
       page: 1,
@@ -37,6 +43,8 @@ export default function PermissionsPage() {
       permissionLevel: undefined,
       entityType: undefined,
       search: undefined,
+      sortBy: 'grantedAt',
+      sortOrder: 'desc',
     });
   };
 
@@ -65,7 +73,11 @@ export default function PermissionsPage() {
       />
 
       {/* Table */}
-      <PermissionsTable filters={filters} onPageChange={handlePageChange} />
+      <PermissionsTable 
+        filters={filters} 
+        onPageChange={handlePageChange}
+        onSortChange={handleSortChange}
+      />
     </div>
   );
 }

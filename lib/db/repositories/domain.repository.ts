@@ -1,6 +1,13 @@
-import { Domain, Prisma } from '@prisma/client';
+import { Domain, Prisma, DomainStatus } from '@prisma/client';
 import { BaseRepository } from '../base-repository';
 import prisma from '@/lib/prisma';
+
+export interface DomainFilters {
+  status?: DomainStatus;
+  clientId?: number;
+  registrarId?: number;
+  search?: string;
+}
 
 export class DomainRepository extends BaseRepository<
   Domain,
@@ -9,6 +16,134 @@ export class DomainRepository extends BaseRepository<
   Prisma.DomainWhereInput
 > {
   protected model = prisma.domain;
+
+  async findAllWithFilters(
+    filters: DomainFilters,
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: any = { createdAt: 'desc' }
+  ) {
+    const where: Prisma.DomainWhereInput = {};
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    if (filters.clientId) {
+      where.clientId = filters.clientId;
+    }
+
+    if (filters.registrarId) {
+      where.registrarId = filters.registrarId;
+    }
+
+    if (filters.search) {
+      where.OR = [
+        { domainName: { contains: filters.search, mode: 'insensitive' } },
+        { tld: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    return this.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        client: {
+          select: {
+            id: true,
+            clientName: true,
+            companyName: true,
+          },
+        },
+        registrar: {
+          select: {
+            id: true,
+            providerName: true,
+            providerType: true,
+          },
+        },
+        costs: {
+          select: {
+            id: true,
+            costAmount: true,
+            currency: true,
+            billingCycle: true,
+          },
+          take: 1,
+        },
+        _count: {
+          select: {
+            costs: true,
+            websites: true,
+          },
+        },
+        cloudflareDomains: {
+          include: {
+            cloudflareAccount: true,
+          },
+        },
+      },
+      orderBy,
+    });
+  }
+
+  async countWithFilters(filters: DomainFilters) {
+    const where: Prisma.DomainWhereInput = {};
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    if (filters.clientId) {
+      where.clientId = filters.clientId;
+    }
+
+    if (filters.registrarId) {
+      where.registrarId = filters.registrarId;
+    }
+
+    if (filters.search) {
+      where.OR = [
+        { domainName: { contains: filters.search, mode: 'insensitive' } },
+        { tld: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    return this.count(where);
+  }
+
+  async findByIdWithRelations(id: number) {
+    return this.findById(id, {
+      client: {
+        select: {
+          id: true,
+          clientName: true,
+          companyName: true,
+        },
+      },
+      registrar: {
+        select: {
+          id: true,
+          providerName: true,
+          providerType: true,
+        },
+      },
+      costs: true,
+      websites: true,
+      _count: {
+        select: {
+          costs: true,
+          websites: true,
+        },
+      },
+      cloudflareDomains: {
+        include: {
+          cloudflareAccount: true,
+        },
+      },
+    });
+  }
 
   /**
    * جلب نطاق باسمه
@@ -105,10 +240,12 @@ export class DomainRepository extends BaseRepository<
    * إحصائيات النطاقات
    */
   async getStats() {
-    const [total, active, expired, expiringSoon] = await Promise.all([
-      this.model.count(),
-      this.model.count({ where: { status: 'active' } }),
-      this.model.count({ where: { status: 'expired' } }),
+    const [total, byStatus, expiringSoon] = await Promise.all([
+      this.count(undefined),
+      this.model.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
       this.model.count({
         where: {
           expiryDate: {
@@ -122,8 +259,10 @@ export class DomainRepository extends BaseRepository<
 
     return {
       total,
-      active,
-      expired,
+      byStatus: byStatus.reduce((acc, item) => {
+        acc[item.status] = item._count;
+        return acc;
+      }, {} as Record<string, number>),
       expiringSoon,
     };
   }

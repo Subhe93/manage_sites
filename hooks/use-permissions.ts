@@ -31,6 +31,8 @@ export interface PermissionFilters {
   entityType?: string;
   permissionLevel?: string;
   search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface PermissionStats {
@@ -62,6 +64,8 @@ export function usePermissions(filters: PermissionFilters = {}) {
       if (filters.entityType) params.append('entityType', filters.entityType);
       if (filters.permissionLevel) params.append('permissionLevel', filters.permissionLevel);
       if (filters.search) params.append('search', filters.search);
+      if (filters.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
 
       const response = await ApiClient.get(`/permissions?${params.toString()}`);
       setPermissions(response.data?.permissions || []);
@@ -85,6 +89,8 @@ export function usePermissions(filters: PermissionFilters = {}) {
     filters.entityType,
     filters.permissionLevel,
     filters.search,
+    filters.sortBy,
+    filters.sortOrder,
   ]);
 
   useEffect(() => {

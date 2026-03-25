@@ -28,21 +28,54 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { usePermissions, usePermissionMutations } from '@/hooks/use-permissions';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface PermissionsTableProps {
   filters: any;
   onPageChange: (page: number) => void;
+  onSortChange: (sortBy: string, sortOrder: 'asc' | 'desc') => void;
 }
 
-export function PermissionsTable({ filters, onPageChange }: PermissionsTableProps) {
+export function PermissionsTable({ filters, onPageChange, onSortChange }: PermissionsTableProps) {
   const router = useRouter();
   const { permissions, loading, pagination, refetch } = usePermissions(filters);
   const { deletePermission } = usePermissionMutations();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleSort = (column: string) => {
+    const newSortOrder = 
+      filters.sortBy === column && filters.sortOrder === 'asc' ? 'desc' : 'asc';
+    
+    onSortChange(column, newSortOrder);
+  };
+
+  const SortableHeader = ({ column, children }: { column: string; children: React.ReactNode }) => {
+    const isSorted = filters.sortBy === column;
+    const sortOrder = filters.sortOrder;
+
+    return (
+      <TableHead 
+        className="cursor-pointer select-none hover:bg-gray-50"
+        onClick={() => handleSort(column)}
+      >
+        <div className="flex items-center gap-2">
+          {children}
+          {isSorted ? (
+            sortOrder === 'asc' ? (
+              <ArrowUp className="h-4 w-4" />
+            ) : (
+              <ArrowDown className="h-4 w-4" />
+            )
+          ) : (
+            <ArrowUpDown className="h-4 w-4 opacity-30" />
+          )}
+        </div>
+      </TableHead>
+    );
+  };
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -107,11 +140,11 @@ export function PermissionsTable({ filters, onPageChange }: PermissionsTableProp
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Entity Type</TableHead>
+              <SortableHeader column="entityType">Entity Type</SortableHeader>
               <TableHead>Entity ID</TableHead>
-              <TableHead>Permission Level</TableHead>
+              <SortableHeader column="permissionLevel">Permission Level</SortableHeader>
               <TableHead>Granted By</TableHead>
-              <TableHead>Granted At</TableHead>
+              <SortableHeader column="grantedAt">Granted At</SortableHeader>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>

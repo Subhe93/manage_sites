@@ -16,6 +16,8 @@ export default function UsersPage() {
     role: undefined as string | undefined,
     isActive: undefined as boolean | undefined,
     search: undefined as string | undefined,
+    sortBy: 'createdAt' as string,
+    sortOrder: 'desc' as 'asc' | 'desc',
   });
 
   const handleFilterChange = (key: string, value: any) => {
@@ -30,6 +32,10 @@ export default function UsersPage() {
     setFilters((prev) => ({ ...prev, page }));
   };
 
+  const handleSortChange = (sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setFilters((prev) => ({ ...prev, sortBy, sortOrder, page: 1 }));
+  };
+
   const handleReset = () => {
     setFilters({
       page: 1,
@@ -37,6 +43,8 @@ export default function UsersPage() {
       role: undefined,
       isActive: undefined,
       search: undefined,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
     });
   };
 
@@ -65,7 +73,11 @@ export default function UsersPage() {
       />
 
       {/* Table */}
-      <UsersTable filters={filters} onPageChange={handlePageChange} />
+      <UsersTable 
+        filters={filters} 
+        onPageChange={handlePageChange}
+        onSortChange={handleSortChange}
+      />
     </div>
   );
 }

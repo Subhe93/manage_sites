@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
     const entityType = searchParams.get('entityType');
     const permissionLevel = searchParams.get('permissionLevel');
     const search = searchParams.get('search');
+    const sortBy = searchParams.get('sortBy') || 'grantedAt';
+    const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
     const filters: any = {};
 
@@ -43,8 +45,12 @@ export async function GET(request: NextRequest) {
       filters.search = search;
     }
 
+    // بناء orderBy
+    const orderBy: any = {};
+    orderBy[sortBy] = sortOrder;
+
     const [permissions, total] = await Promise.all([
-      permissionRepository.findAllWithFilters(filters, page, pageSize),
+      permissionRepository.findAllWithFilters(filters, page, pageSize, orderBy),
       permissionRepository.countWithFilters(filters),
     ]);
 
@@ -69,7 +75,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createPermissionSchema.parse(body);
 
-    const permission = await permissionRepository.create(validatedData);
+    const permission = await permissionRepository.create({
+      user: {
+        connect: { id: validatedData.userId },
+      },
+      entityType: validatedData.entityType,
+      entityId: validatedData.entityId,
+      permissionLevel: validatedData.permissionLevel,
+      ...(validatedData.grantedBy && {
+        granter: {
+          connect: { id: validatedData.grantedBy },
+        },
+      }),
+    });
 
     return ApiResponseHelper.created(permission);
   } catch (error) {

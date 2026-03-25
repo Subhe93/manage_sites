@@ -16,6 +16,8 @@ export function useUsers(params?: {
   role?: string;
   isActive?: boolean;
   search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }) {
   const [users, setUsers] = useState<any[]>([]);
   const [pagination, setPagination] = useState<any>(null);
@@ -27,14 +29,14 @@ export function useUsers(params?: {
       setLoading(true);
       setError(null);
       const result = await UsersApi.getAll(params);
-      setUsers(result.data || []);
+      setUsers(Array.isArray(result.data) ? result.data : []);
       setPagination(result.pagination);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [params?.page, params?.pageSize, params?.role, params?.isActive, params?.search]);
+  }, [params?.page, params?.pageSize, params?.role, params?.isActive, params?.search, params?.sortBy, params?.sortOrder]);
 
   useEffect(() => {
     fetchUsers();

@@ -1,6 +1,12 @@
-import { Client, Prisma } from '@prisma/client';
+import { Client, Prisma, ClientStatus } from '@prisma/client';
 import { BaseRepository } from '../base-repository';
 import prisma from '@/lib/prisma';
+
+export interface ClientFilters {
+  status?: ClientStatus;
+  country?: string;
+  search?: string;
+}
 
 export class ClientRepository extends BaseRepository<
   Client,
@@ -9,6 +15,77 @@ export class ClientRepository extends BaseRepository<
   Prisma.ClientWhereInput
 > {
   protected model = prisma.client;
+
+  async findAllWithFilters(
+    filters: ClientFilters,
+    page: number = 1,
+    pageSize: number = 10,
+    orderBy: any = { createdAt: 'desc' }
+  ) {
+    const where: Prisma.ClientWhereInput = {};
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    if (filters.country) {
+      where.country = filters.country;
+    }
+
+    if (filters.search) {
+      where.OR = [
+        { clientName: { contains: filters.search, mode: 'insensitive' } },
+        { companyName: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+        { phone: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    return this.findMany({
+      where,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        creator: {
+          select: {
+            id: true,
+            username: true,
+            fullName: true,
+          },
+        },
+        _count: {
+          select: {
+            domains: true,
+            websites: true,
+          },
+        },
+      },
+      orderBy,
+    });
+  }
+
+  async countWithFilters(filters: ClientFilters) {
+    const where: Prisma.ClientWhereInput = {};
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    if (filters.country) {
+      where.country = filters.country;
+    }
+
+    if (filters.search) {
+      where.OR = [
+        { clientName: { contains: filters.search, mode: 'insensitive' } },
+        { companyName: { contains: filters.search, mode: 'insensitive' } },
+        { email: { contains: filters.search, mode: 'insensitive' } },
+        { phone: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    return this.count(where);
+  }
 
   /**
    * جلب عميل مع جميع المواقع والنطاقات
@@ -86,18 +163,20 @@ export class ClientRepository extends BaseRepository<
    * إحصائيات العملاء
    */
   async getStats() {
-    const [total, active, suspended, inactive] = await Promise.all([
-      this.model.count(),
-      this.model.count({ where: { status: 'active' } }),
-      this.model.count({ where: { status: 'suspended' } }),
-      this.model.count({ where: { status: 'inactive' } }),
+    const [total, byStatus] = await Promise.all([
+      this.count(undefined),
+      this.model.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
     ]);
 
     return {
       total,
-      active,
-      suspended,
-      inactive,
+      byStatus: byStatus.reduce((acc, item) => {
+        acc[item.status] = item._count;
+        return acc;
+      }, {} as Record<string, number>),
     };
   }
 

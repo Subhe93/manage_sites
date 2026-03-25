@@ -1,48 +1,87 @@
 'use client';
 
 import { useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import type { Server, ServerStatus } from '@/lib/types';
-
-const Header = dynamic(() => import('@/components/layout/header').then(m => ({ default: m.Header })), { ssr: false });
-const ServersStats = dynamic(() => import('@/components/servers/servers-stats').then(m => ({ default: m.ServersStats })), { ssr: false });
-const ServersTable = dynamic(() => import('@/components/servers/servers-table').then(m => ({ default: m.ServersTable })), { ssr: false });
-const ServerDetailPanel = dynamic(() => import('@/components/servers/server-detail-panel').then(m => ({ default: m.ServerDetailPanel })), { ssr: false });
+import { ServersStats } from '@/components/servers/servers-stats';
+import { ServersFilters } from '@/components/servers/servers-filters';
+import { ServersTable } from '@/components/servers/servers-table';
 
 export default function ServersPage() {
-  const [selectedServer, setSelectedServer] = useState<Server | null>(null);
-  const [statusFilter, setStatusFilter] = useState<ServerStatus | 'all'>('all');
+  const router = useRouter();
+  const [filters, setFilters] = useState({
+    page: 1,
+    pageSize: 10,
+    serverType: undefined as string | undefined,
+    status: undefined as string | undefined,
+    providerId: undefined as number | undefined,
+    search: undefined as string | undefined,
+    sortBy: 'createdAt' as string,
+    sortOrder: 'desc' as 'asc' | 'desc',
+  });
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+      page: 1,
+    }));
+  };
+
+  const handlePageChange = (page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+  };
+
+  const handleSortChange = (sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setFilters((prev) => ({ ...prev, sortBy, sortOrder, page: 1 }));
+  };
+
+  const handleReset = () => {
+    setFilters({
+      page: 1,
+      pageSize: 10,
+      serverType: undefined,
+      status: undefined,
+      providerId: undefined,
+      search: undefined,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
+  };
 
   return (
-    <div className="min-h-screen">
-      <Header title="Servers" description="Monitor and manage your server infrastructure" />
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div />
-          <Button size="sm" className="h-9 gap-2">
-            <Plus className="h-4 w-4" />
-            Add Server
-          </Button>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Servers</h1>
+          <p className="text-gray-500 mt-1">
+            Manage your hosting servers and infrastructure
+          </p>
         </div>
-
-        <ServersStats activeFilter={statusFilter} onFilterChange={setStatusFilter} />
-        <ServersTable onViewServer={setSelectedServer} statusFilter={statusFilter} />
+        <Button onClick={() => router.push('/servers/new')}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Server
+        </Button>
       </div>
 
-      {selectedServer && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setSelectedServer(null)}
-          />
-          <ServerDetailPanel
-            server={selectedServer}
-            onClose={() => setSelectedServer(null)}
-          />
-        </>
-      )}
+      {/* Stats */}
+      <ServersStats />
+
+      {/* Filters */}
+      <ServersFilters
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onReset={handleReset}
+      />
+
+      {/* Table */}
+      <ServersTable
+        filters={filters}
+        onPageChange={handlePageChange}
+        onSortChange={handleSortChange}
+      />
     </div>
   );
 }

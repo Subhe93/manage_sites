@@ -16,6 +16,8 @@ export const GET = asyncHandler(async (req: NextRequest) => {
   const role = searchParams.get('role');
   const isActive = searchParams.get('isActive');
   const search = searchParams.get('search');
+  const sortBy = searchParams.get('sortBy') || 'createdAt';
+  const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
   // بناء شروط البحث
   const where: any = {};
@@ -39,11 +41,15 @@ export const GET = asyncHandler(async (req: NextRequest) => {
     ];
   }
 
+  // بناء orderBy
+  const orderBy: any = {};
+  orderBy[sortBy] = sortOrder;
+
   const result = await userRepository.paginate({
     page,
     pageSize,
     where,
-    orderBy: { createdAt: 'desc' },
+    orderBy,
     include: {
       _count: {
         select: {

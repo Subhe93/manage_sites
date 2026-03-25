@@ -239,6 +239,8 @@ export class UsersApi {
     role?: string;
     isActive?: boolean;
     search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
   }) {
     return ApiClient.get('/users', params);
   }

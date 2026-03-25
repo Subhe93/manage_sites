@@ -1,27 +1,49 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Cloud } from 'lucide-react';
+import { Cloud, Loader2 } from 'lucide-react';
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockCloudflareAccounts } from '@/lib/mock-data';
+import { useCloudflareAccount, useCloudflareAccountMutations } from '@/hooks/use-cloudflare-accounts';
 
 export default function EditCloudflareAccountPage() {
   const params = useParams();
+  const router = useRouter();
   const id = Number(params.id);
-  const account = mockCloudflareAccounts.find((a) => a.id === id);
+  const { account, loading: fetchLoading, error } = useCloudflareAccount(id);
+  const { updateAccount } = useCloudflareAccountMutations();
+  const [saving, setSaving] = useState(false);
 
-  const [accountName, setAccountName] = useState(account?.account_name ?? '');
-  const [accountEmail, setAccountEmail] = useState(account?.account_email ?? '');
-  const [accountId, setAccountId] = useState(account?.account_id ?? '');
-  const [status, setStatus] = useState(account?.status ?? '');
-  const [notes, setNotes] = useState(account?.notes ?? '');
+  const [accountName, setAccountName] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [status, setStatus] = useState('');
+  const [notes, setNotes] = useState('');
 
-  if (!account) {
+  useEffect(() => {
+    if (account) {
+      setAccountName(account.accountName || '');
+      setAccountEmail(account.accountEmail || '');
+      setAccountId(account.accountId || '');
+      setStatus(account.status || '');
+      setNotes(account.notes || '');
+    }
+  }, [account]);
+
+  if (fetchLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen gap-2">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span>Loading...</span>
+      </div>
+    );
+  }
+
+  if (error || !account) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <h1 className="text-2xl font-bold">Cloudflare Account Not Found</h1>
@@ -32,25 +54,33 @@ export default function EditCloudflareAccountPage() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({
-      id,
-      account_name: accountName,
-      account_email: accountEmail,
-      account_id: accountId,
-      status,
-      notes,
-    });
+    try {
+      setSaving(true);
+      await updateAccount(id, {
+        accountName,
+        accountEmail,
+        accountId: accountId || null,
+        status,
+        notes: notes || null,
+      } as any);
+      router.push('/cloudflare/accounts');
+    } catch {
+      // Error handled in hook
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <FormLayout
       title="Edit Cloudflare Account"
-      description={`Editing account: ${account.account_name}`}
+      description={`Editing account: ${account.accountName}`}
       backHref="/cloudflare/accounts"
       backLabel="Back to Cloudflare Accounts"
       onSubmit={handleSubmit}
+      loading={saving}
     >
       <FormSection title="Account Details" icon={<Cloud className="h-4 w-4" />}>
         <FormFieldWrapper label="Account Name" required>
@@ -66,6 +96,7 @@ export default function EditCloudflareAccountPage() {
             value={accountEmail}
             onChange={(e) => setAccountEmail(e.target.value)}
             placeholder="email@example.com"
+            type="email"
             required
           />
         </FormFieldWrapper>

@@ -1,48 +1,83 @@
 'use client';
 
 import { useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import type { Client, ClientStatus } from '@/lib/types';
-
-const Header = dynamic(() => import('@/components/layout/header').then(m => ({ default: m.Header })), { ssr: false });
-const ClientsStats = dynamic(() => import('@/components/clients/clients-stats').then(m => ({ default: m.ClientsStats })), { ssr: false });
-const ClientsTable = dynamic(() => import('@/components/clients/clients-table').then(m => ({ default: m.ClientsTable })), { ssr: false });
-const ClientDetailPanel = dynamic(() => import('@/components/clients/client-detail-panel').then(m => ({ default: m.ClientDetailPanel })), { ssr: false });
+import { ClientsStats } from '@/components/clients/clients-stats';
+import { ClientsFilters } from '@/components/clients/clients-filters';
+import { ClientsTable } from '@/components/clients/clients-table';
 
 export default function ClientsPage() {
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [statusFilter, setStatusFilter] = useState<ClientStatus | 'all'>('all');
+  const router = useRouter();
+  const [filters, setFilters] = useState({
+    page: 1,
+    pageSize: 10,
+    status: undefined as string | undefined,
+    country: undefined as string | undefined,
+    search: undefined as string | undefined,
+    sortBy: 'createdAt' as string,
+    sortOrder: 'desc' as 'asc' | 'desc',
+  });
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+      page: 1,
+    }));
+  };
+
+  const handlePageChange = (page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+  };
+
+  const handleSortChange = (sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setFilters((prev) => ({ ...prev, sortBy, sortOrder, page: 1 }));
+  };
+
+  const handleReset = () => {
+    setFilters({
+      page: 1,
+      pageSize: 10,
+      status: undefined,
+      country: undefined,
+      search: undefined,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
+  };
 
   return (
-    <div className="min-h-screen">
-      <Header title="Clients" description="Manage your client accounts" />
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div />
-          <Button size="sm" className="h-9 gap-2">
-            <Plus className="h-4 w-4" />
-            Add Client
-          </Button>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Clients</h1>
+          <p className="text-gray-500 mt-1">Manage your clients and customers</p>
         </div>
-
-        <ClientsStats activeFilter={statusFilter} onFilterChange={setStatusFilter} />
-        <ClientsTable onViewClient={setSelectedClient} statusFilter={statusFilter} />
+        <Button onClick={() => router.push('/clients/new')}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Client
+        </Button>
       </div>
 
-      {selectedClient && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setSelectedClient(null)}
-          />
-          <ClientDetailPanel
-            client={selectedClient}
-            onClose={() => setSelectedClient(null)}
-          />
-        </>
-      )}
+      {/* Stats */}
+      <ClientsStats />
+
+      {/* Filters */}
+      <ClientsFilters
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onReset={handleReset}
+      />
+
+      {/* Table */}
+      <ClientsTable
+        filters={filters}
+        onPageChange={handlePageChange}
+        onSortChange={handleSortChange}
+      />
     </div>
   );
 }
