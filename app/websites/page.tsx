@@ -1,48 +1,83 @@
 'use client';
 
 import { useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import type { Website, WebsiteStatus } from '@/lib/types';
-
-const Header = dynamic(() => import('@/components/layout/header').then(m => ({ default: m.Header })), { ssr: false });
-const WebsitesStats = dynamic(() => import('@/components/websites/websites-stats').then(m => ({ default: m.WebsitesStats })), { ssr: false });
-const WebsitesTable = dynamic(() => import('@/components/websites/websites-table').then(m => ({ default: m.WebsitesTable })), { ssr: false });
-const WebsiteDetailPanel = dynamic(() => import('@/components/websites/website-detail-panel').then(m => ({ default: m.WebsiteDetailPanel })), { ssr: false });
+import { WebsitesStats } from '@/components/websites/websites-stats';
+import { WebsitesFilters } from '@/components/websites/websites-filters';
+import { WebsitesTable } from '@/components/websites/websites-table';
 
 export default function WebsitesPage() {
-  const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
-  const [statusFilter, setStatusFilter] = useState<WebsiteStatus | 'all'>('all');
+  const router = useRouter();
+  const [filters, setFilters] = useState({
+    page: 1,
+    pageSize: 10,
+    type: undefined as string | undefined,
+    status: undefined as string | undefined,
+    environment: undefined as string | undefined,
+    search: undefined as string | undefined,
+    sortBy: 'createdAt' as string,
+    sortOrder: 'desc' as 'asc' | 'desc',
+  });
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+      page: 1,
+    }));
+  };
+
+  const handlePageChange = (page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+  };
+
+  const handleSortChange = (sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setFilters((prev) => ({ ...prev, sortBy, sortOrder, page: 1 }));
+  };
+
+  const handleReset = () => {
+    setFilters({
+      page: 1,
+      pageSize: 10,
+      type: undefined,
+      status: undefined,
+      environment: undefined,
+      search: undefined,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
+  };
 
   return (
-    <div className="min-h-screen">
-      <Header title="Websites" description="Manage all hosted websites and applications" />
-      <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div />
-          <Button size="sm" className="h-9 gap-2">
-            <Plus className="h-4 w-4" />
-            Add Website
-          </Button>
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Websites</h1>
+          <p className="text-gray-500 mt-1">
+            Manage all hosted websites and applications
+          </p>
         </div>
-
-        <WebsitesStats activeFilter={statusFilter} onFilterChange={setStatusFilter} />
-        <WebsitesTable onViewWebsite={setSelectedWebsite} statusFilter={statusFilter} />
+        <Button onClick={() => router.push('/websites/new')}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Website
+        </Button>
       </div>
 
-      {selectedWebsite && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setSelectedWebsite(null)}
-          />
-          <WebsiteDetailPanel
-            website={selectedWebsite}
-            onClose={() => setSelectedWebsite(null)}
-          />
-        </>
-      )}
+      <WebsitesStats />
+
+      <WebsitesFilters
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onReset={handleReset}
+      />
+
+      <WebsitesTable
+        filters={filters}
+        onPageChange={handlePageChange}
+        onSortChange={handleSortChange}
+      />
     </div>
   );
 }

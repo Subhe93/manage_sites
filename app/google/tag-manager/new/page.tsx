@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Tag } from 'lucide-react'
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout'
 import { Input } from '@/components/ui/input'
@@ -12,33 +13,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useGoogleTagManagerMutations } from '@/hooks/use-google-services'
 
 export default function NewGoogleTagManagerPage() {
+  const router = useRouter()
+  const { createItem } = useGoogleTagManagerMutations()
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
   const [accountId, setAccountId] = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState('active')
   const [notes, setNotes] = useState('')
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      account_name: accountName,
-      account_email: accountEmail,
-      account_id: accountId,
-      status,
-      notes,
-    })
+
+    try {
+      await createItem({
+        accountName,
+        accountEmail,
+        accountId: accountId || null,
+        status: status as 'active' | 'inactive' | 'suspended',
+        notes: notes || null,
+      })
+
+      router.push('/google/tag-manager')
+    } catch {
+      // handled in hook
+    }
   }
 
   return (
     <FormLayout
       title="Add Google Tag Manager Account"
+      description="Create a new Google Tag Manager account"
       backHref="/google/tag-manager"
       backLabel="Back to Tag Manager"
       onSubmit={onSubmit}
     >
-      <FormSection title="Tag Manager Account" icon={Tag}>
+      <FormSection title="Tag Manager Account" icon={<Tag className="h-4 w-4 text-primary" />}>
         <FormFieldWrapper label="Account Name" required>
           <Input
             value={accountName}

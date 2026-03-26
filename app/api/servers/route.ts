@@ -3,7 +3,7 @@ import { serverRepository } from '@/lib/db/repositories/server.repository';
 import { ApiResponseHelper } from '@/lib/api/response';
 import { asyncHandler } from '@/lib/api/error-handler';
 import { z } from 'zod';
-import { ServerType, ServerStatus, ControlPanel } from '@prisma/client';
+import { ServerType, ServerStatus, ControlPanel, BillingCycle } from '@prisma/client';
 
 /**
  * GET /api/servers
@@ -78,6 +78,16 @@ const createServerSchema = z.object({
   bandwidthGb: z.number().int().positive().optional().nullable(),
   status: z.nativeEnum(ServerStatus),
   notes: z.string().optional().nullable(),
+  costs: z.array(z.object({
+    costAmount: z.number().positive(),
+    currency: z.string().min(1),
+    billingCycle: z.nativeEnum(BillingCycle),
+    activationDate: z.string().optional().nullable(),
+    nextBillingDate: z.string().optional().nullable(),
+    autoRenew: z.boolean().optional().default(true),
+    paymentMethod: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+  })).optional(),
 });
 
 export const POST = asyncHandler(async (req: NextRequest) => {
@@ -103,6 +113,21 @@ export const POST = asyncHandler(async (req: NextRequest) => {
   if (validatedData.providerId) {
     serverData.provider = {
       connect: { id: validatedData.providerId },
+    };
+  }
+
+  if (validatedData.costs && validatedData.costs.length > 0) {
+    serverData.costs = {
+      create: validatedData.costs.map((cost) => ({
+        costAmount: cost.costAmount,
+        currency: cost.currency,
+        billingCycle: cost.billingCycle,
+        activationDate: cost.activationDate ? new Date(cost.activationDate) : null,
+        nextBillingDate: cost.nextBillingDate ? new Date(cost.nextBillingDate) : null,
+        autoRenew: cost.autoRenew,
+        paymentMethod: cost.paymentMethod,
+        notes: cost.notes,
+      })),
     };
   }
 

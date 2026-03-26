@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Globe, Server, Monitor, Users, Building2, Shield, Cloud, ChartBar as BarChart3, Search, Tag as TagIcon, Bell, Activity, Settings, Wrench, FileText, GitBranch, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft, UserCog, Lock } from 'lucide-react';
+import { LayoutDashboard, Globe, Server, Monitor, Users, Building2, Cloud, ChartBar as BarChart3, Search, Bell, Activity, Settings, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft, UserCog, Lock } from 'lucide-react';
 
 interface NavItem {
   label: string;
@@ -26,7 +26,6 @@ const navigation: NavItem[] = [
     icon: Cloud,
     children: [
       { label: 'Accounts', href: '/cloudflare/accounts' },
-      { label: 'Domains', href: '/cloudflare/domains' },
     ],
   },
   {
@@ -40,13 +39,8 @@ const navigation: NavItem[] = [
       { label: 'Tag Manager', href: '/google/tag-manager' },
     ],
   },
-  { label: 'Repositories', href: '/repositories', icon: GitBranch },
-  { label: 'Security', href: '/security', icon: Shield },
-  { label: 'Maintenance', href: '/maintenance', icon: Wrench },
   { label: 'Uptime Monitor', href: '/uptime', icon: Activity },
   { label: 'Notifications', href: '/notifications', icon: Bell },
-  { label: 'Documents', href: '/documents', icon: FileText },
-  { label: 'Tags', href: '/tags', icon: TagIcon },
   { label: 'Activity Log', href: '/activity', icon: Search },
   { label: 'Users', href: '/users', icon: UserCog },
   { label: 'Permissions', href: '/permissions', icon: Lock },

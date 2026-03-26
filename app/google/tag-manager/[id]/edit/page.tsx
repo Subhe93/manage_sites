@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Tag } from 'lucide-react'
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout'
 import { Input } from '@/components/ui/input'
@@ -14,12 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { mockGoogleTagManagerAccounts } from '@/lib/mock-data'
+import { useGoogleTagManagerAccount, useGoogleTagManagerMutations } from '@/hooks/use-google-services'
 
 export default function EditGoogleTagManagerPage() {
+  const router = useRouter()
   const params = useParams()
   const id = Number(params.id)
-  const entity = mockGoogleTagManagerAccounts.find((item) => item.id === id)
+  const { item: entity, loading } = useGoogleTagManagerAccount(id)
+  const { updateItem } = useGoogleTagManagerMutations()
 
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
@@ -29,43 +31,49 @@ export default function EditGoogleTagManagerPage() {
 
   useEffect(() => {
     if (entity) {
-      setAccountName(entity.account_name ?? '')
-      setAccountEmail(entity.account_email ?? '')
-      setAccountId(entity.account_id ?? '')
+      setAccountName(entity.accountName ?? '')
+      setAccountEmail(entity.accountEmail ?? '')
+      setAccountId(entity.accountId ?? '')
       setStatus(entity.status ?? '')
       setNotes(entity.notes ?? '')
     }
   }, [entity])
 
-  if (!entity) {
-    return (
-      <div>
-        <p>Not Found</p>
-        <Link href="/google/tag-manager">Back to Tag Manager</Link>
-      </div>
-    )
+  if (loading) {
+    return <div className="p-6 text-muted-foreground">Loading...</div>
   }
 
-  const onSubmit = (e: React.FormEvent) => {
+  if (!entity) {
+    return <div className="p-6 text-muted-foreground">Tag Manager account not found</div>
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      id,
-      account_name: accountName,
-      account_email: accountEmail,
-      account_id: accountId,
-      status,
-      notes,
-    })
+
+    try {
+      await updateItem(id, {
+        accountName,
+        accountEmail,
+        accountId: accountId || null,
+        status: status as 'active' | 'inactive' | 'suspended',
+        notes: notes || null,
+      })
+
+      router.push('/google/tag-manager')
+    } catch {
+      // handled in hook
+    }
   }
 
   return (
     <FormLayout
       title="Edit Google Tag Manager Account"
+      description={`Editing ${entity.accountName}`}
       backHref="/google/tag-manager"
       backLabel="Back to Tag Manager"
       onSubmit={onSubmit}
     >
-      <FormSection title="Tag Manager Account" icon={Tag}>
+      <FormSection title="Tag Manager Account" icon={<Tag className="h-4 w-4 text-primary" />}>
         <FormFieldWrapper label="Account Name" required>
           <Input
             value={accountName}

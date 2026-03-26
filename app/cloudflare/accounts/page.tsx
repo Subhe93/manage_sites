@@ -190,7 +190,7 @@ export default function CloudflareAccountsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {account._count?.domains || 0}
+                        {account._count?.linkedDomains || 0}
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">{account.notes || '-'}</TableCell>

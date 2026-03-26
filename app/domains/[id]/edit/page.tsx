@@ -25,6 +25,7 @@ import {
 import { useDomain, useDomainMutations } from '@/hooks/use-domains';
 import { useClients } from '@/hooks/use-clients';
 import { useProviders } from '@/hooks/use-providers';
+import { useCloudflareAccounts } from '@/hooks/use-cloudflare-accounts';
 import { toast } from 'sonner';
 
 interface DomainCost {
@@ -167,6 +168,7 @@ export default function EditDomainPage() {
   const { updateDomain } = useDomainMutations();
   const { clients } = useClients({ pageSize: 100 });
   const { providers } = useProviders({ pageSize: 100, providerType: 'registrar' });
+  const { accounts: cloudflareAccounts } = useCloudflareAccounts({ pageSize: 100 });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Domain fields
@@ -175,6 +177,7 @@ export default function EditDomainPage() {
   const [status, setStatus] = useState('');
   const [registrarId, setRegistrarId] = useState('');
   const [clientId, setClientId] = useState('');
+  const [cloudflareAccountId, setCloudflareAccountId] = useState('');
   const [registrationDate, setRegistrationDate] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [autoRenew, setAutoRenew] = useState(false);
@@ -215,6 +218,7 @@ export default function EditDomainPage() {
       setStatus(domain.status || '');
       setRegistrarId(domain.registrarId ? String(domain.registrarId) : '');
       setClientId(domain.clientId ? String(domain.clientId) : '');
+      setCloudflareAccountId(domain.cloudflareAccountId ? String(domain.cloudflareAccountId) : '');
       setRegistrationDate(domain.registrationDate ? domain.registrationDate.split('T')[0] : '');
       setExpiryDate(domain.expiryDate ? domain.expiryDate.split('T')[0] : '');
       setAutoRenew(domain.autoRenew || false);
@@ -320,6 +324,7 @@ export default function EditDomainPage() {
         status,
         registrarId: registrarId ? Number(registrarId) : null,
         clientId: clientId ? Number(clientId) : null,
+        cloudflareAccountId: cloudflareAccountId ? Number(cloudflareAccountId) : null,
         registrationDate: registrationDate || null,
         expiryDate: expiryDate || null,
         autoRenew,
@@ -389,6 +394,21 @@ export default function EditDomainPage() {
                 {clients.map((client) => (
                   <SelectItem key={client.id} value={String(client.id)}>
                     {client.clientName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormFieldWrapper>
+          <FormFieldWrapper label="Cloudflare Account (Optional)">
+            <Select value={cloudflareAccountId || 'none'} onValueChange={(value) => setCloudflareAccountId(value === 'none' ? '' : value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Cloudflare account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {cloudflareAccounts.map((account) => (
+                  <SelectItem key={account.id} value={String(account.id)}>
+                    {account.accountName}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -8,6 +8,7 @@ export interface Domain {
   status: string;
   registrarId: number | null;
   clientId: number | null;
+  cloudflareAccountId: number | null;
   registrationDate: string | null;
   expiryDate: string | null;
   autoRenew: boolean;
@@ -26,6 +27,11 @@ export interface Domain {
     id: number;
     providerName: string;
     providerType: string;
+  };
+  cloudflareAccount?: {
+    id: number;
+    accountName: string;
+    accountEmail: string;
   };
   _count?: {
     costs: number;

@@ -37,6 +37,7 @@ const updateDomainSchema = z.object({
   status: z.nativeEnum(DomainStatus).optional(),
   registrarId: z.number().int().positive().optional().nullable(),
   clientId: z.number().int().positive().optional().nullable(),
+  cloudflareAccountId: z.number().int().positive().optional().nullable(),
   registrationDate: z.string().optional().nullable(),
   expiryDate: z.string().optional().nullable(),
   autoRenew: z.boolean().optional(),
@@ -92,6 +93,19 @@ export const PUT = asyncHandler(
         };
       }
       delete updateData.clientId;
+    }
+
+    if ('cloudflareAccountId' in validatedData) {
+      if (validatedData.cloudflareAccountId) {
+        updateData.cloudflareAccount = {
+          connect: { id: validatedData.cloudflareAccountId },
+        };
+      } else {
+        updateData.cloudflareAccount = {
+          disconnect: true,
+        };
+      }
+      delete updateData.cloudflareAccountId;
     }
 
     const domain = await domainRepository.update(id, updateData);

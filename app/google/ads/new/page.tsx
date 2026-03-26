@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChartBar as BarChart3 } from 'lucide-react'
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout'
 import { Input } from '@/components/ui/input'
@@ -12,33 +13,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useGoogleAdsMutations } from '@/hooks/use-google-services'
 
 export default function NewGoogleAdsPage() {
+  const router = useRouter()
+  const { createItem } = useGoogleAdsMutations()
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
   const [customerId, setCustomerId] = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState('active')
   const [notes, setNotes] = useState('')
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      account_name: accountName,
-      account_email: accountEmail,
-      customer_id: customerId,
-      status,
-      notes,
-    })
+
+    try {
+      await createItem({
+        accountName,
+        accountEmail,
+        customerId: customerId || null,
+        status: status as 'active' | 'inactive' | 'suspended',
+        notes: notes || null,
+      })
+
+      router.push('/google/ads')
+    } catch {
+      // handled in hook
+    }
   }
 
   return (
     <FormLayout
       title="Add Google Ads Account"
+      description="Create a new Google Ads account"
       backHref="/google/ads"
       backLabel="Back to Google Ads"
       onSubmit={onSubmit}
     >
-      <FormSection title="Ads Account" icon={BarChart3}>
+      <FormSection title="Ads Account" icon={<BarChart3 className="h-4 w-4 text-primary" />}>
         <FormFieldWrapper label="Account Name" required>
           <Input
             value={accountName}

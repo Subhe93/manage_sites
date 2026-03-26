@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChartBar as BarChart3 } from 'lucide-react'
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout'
 import { Input } from '@/components/ui/input'
@@ -14,12 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { mockGoogleAnalyticsAccounts } from '@/lib/mock-data'
+import { useGoogleAnalyticsAccount, useGoogleAnalyticsMutations } from '@/hooks/use-google-services'
 
 export default function EditGoogleAnalyticsPage() {
+  const router = useRouter()
   const params = useParams()
   const id = Number(params.id)
-  const entity = mockGoogleAnalyticsAccounts.find((item) => item.id === id)
+  const { item: entity, loading } = useGoogleAnalyticsAccount(id)
+  const { updateItem } = useGoogleAnalyticsMutations()
 
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
@@ -32,49 +34,55 @@ export default function EditGoogleAnalyticsPage() {
 
   useEffect(() => {
     if (entity) {
-      setAccountName(entity.account_name ?? '')
-      setAccountEmail(entity.account_email ?? '')
-      setAccountId(entity.account_id ?? '')
-      setPropertyId(entity.property_id ?? '')
-      setMeasurementId(entity.measurement_id ?? '')
-      setAnalyticsVersion(entity.analytics_version ?? '')
+      setAccountName(entity.accountName ?? '')
+      setAccountEmail(entity.accountEmail ?? '')
+      setAccountId(entity.accountId ?? '')
+      setPropertyId(entity.propertyId ?? '')
+      setMeasurementId(entity.measurementId ?? '')
+      setAnalyticsVersion(entity.analyticsVersion ?? '')
       setStatus(entity.status ?? '')
       setNotes(entity.notes ?? '')
     }
   }, [entity])
 
-  if (!entity) {
-    return (
-      <div>
-        <p>Not Found</p>
-        <Link href="/google/analytics">Back to Google Analytics</Link>
-      </div>
-    )
+  if (loading) {
+    return <div className="p-6 text-muted-foreground">Loading...</div>
   }
 
-  const onSubmit = (e: React.FormEvent) => {
+  if (!entity) {
+    return <div className="p-6 text-muted-foreground">Google Analytics account not found</div>
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      id,
-      account_name: accountName,
-      account_email: accountEmail,
-      account_id: accountId,
-      property_id: propertyId,
-      measurement_id: measurementId,
-      analytics_version: analyticsVersion,
-      status,
-      notes,
-    })
+
+    try {
+      await updateItem(id, {
+        accountName,
+        accountEmail,
+        accountId: accountId || null,
+        propertyId: propertyId || null,
+        measurementId: measurementId || null,
+        analyticsVersion: analyticsVersion as 'ua' | 'ga4',
+        status: status as 'active' | 'inactive' | 'suspended',
+        notes: notes || null,
+      })
+
+      router.push('/google/analytics')
+    } catch {
+      // handled in hook
+    }
   }
 
   return (
     <FormLayout
       title="Edit Google Analytics Account"
+      description={`Editing ${entity.accountName}`}
       backHref="/google/analytics"
       backLabel="Back to Google Analytics"
       onSubmit={onSubmit}
     >
-      <FormSection title="Analytics Account" icon={BarChart3}>
+      <FormSection title="Analytics Account" icon={<BarChart3 className="h-4 w-4 text-primary" />}>
         <FormFieldWrapper label="Account Name" required>
           <Input
             value={accountName}

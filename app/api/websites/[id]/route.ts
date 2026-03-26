@@ -28,22 +28,26 @@ export const GET = asyncHandler(
  */
 const updateWebsiteSchema = z.object({
   websiteName: z.string().min(3).max(255).optional(),
-  domainId: z.number().optional(),
-  clientId: z.number().optional(),
-  serverAccountId: z.number().optional(),
+  domainId: z.number().int().positive().optional().nullable(),
+  clientId: z.number().int().positive().optional().nullable(),
+  serverAccountId: z.number().int().positive().optional().nullable(),
+  googleAdsAccountId: z.number().int().positive().optional().nullable(),
+  googleAnalyticsAccountId: z.number().int().positive().optional().nullable(),
+  googleSearchConsoleAccountId: z.number().int().positive().optional().nullable(),
+  googleTagManagerAccountId: z.number().int().positive().optional().nullable(),
   websiteType: z
     .enum(['wordpress', 'spa', 'custom', 'mobile_app', 'static', 'ecommerce'])
     .optional(),
-  framework: z.string().optional(),
+  framework: z.string().optional().nullable(),
   environment: z.enum(['development', 'staging', 'production']).optional(),
-  websiteUrl: z.string().url().optional(),
-  adminUrl: z.string().url().optional(),
-  apiEndpoint: z.string().url().optional(),
-  databaseName: z.string().optional(),
-  databaseType: z.string().optional(),
+  websiteUrl: z.string().url().optional().nullable(),
+  adminUrl: z.string().url().optional().nullable(),
+  apiEndpoint: z.string().url().optional().nullable(),
+  databaseName: z.string().optional().nullable(),
+  databaseType: z.string().optional().nullable(),
   status: z.enum(['active', 'maintenance', 'suspended', 'archived']).optional(),
-  description: z.string().optional(),
-  notes: z.string().optional(),
+  description: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
 });
 
 export const PUT = asyncHandler(
@@ -57,14 +61,65 @@ export const PUT = asyncHandler(
       return ApiResponseHelper.notFound('Website not found');
     }
 
-    const website = await websiteRepository.update(id, {
-      ...validatedData,
-      domain: validatedData.domainId ? { connect: { id: validatedData.domainId } } : undefined,
-      client: validatedData.clientId ? { connect: { id: validatedData.clientId } } : undefined,
-      serverAccount: validatedData.serverAccountId
-        ? { connect: { id: validatedData.serverAccountId } }
-        : undefined,
-    } as any);
+    const websiteData: any = {};
+
+    if (validatedData.websiteName !== undefined) websiteData.websiteName = validatedData.websiteName;
+    if (validatedData.websiteType !== undefined) websiteData.websiteType = validatedData.websiteType;
+    if (validatedData.framework !== undefined) websiteData.framework = validatedData.framework;
+    if (validatedData.environment !== undefined) websiteData.environment = validatedData.environment;
+    if (validatedData.websiteUrl !== undefined) websiteData.websiteUrl = validatedData.websiteUrl;
+    if (validatedData.adminUrl !== undefined) websiteData.adminUrl = validatedData.adminUrl;
+    if (validatedData.apiEndpoint !== undefined) websiteData.apiEndpoint = validatedData.apiEndpoint;
+    if (validatedData.databaseName !== undefined) websiteData.databaseName = validatedData.databaseName;
+    if (validatedData.databaseType !== undefined) websiteData.databaseType = validatedData.databaseType;
+    if (validatedData.status !== undefined) websiteData.status = validatedData.status;
+    if (validatedData.description !== undefined) websiteData.description = validatedData.description;
+    if (validatedData.notes !== undefined) websiteData.notes = validatedData.notes;
+
+    if (validatedData.domainId !== undefined) {
+      websiteData.domain =
+        validatedData.domainId === null
+          ? { disconnect: true }
+          : { connect: { id: validatedData.domainId } };
+    }
+    if (validatedData.clientId !== undefined) {
+      websiteData.client =
+        validatedData.clientId === null
+          ? { disconnect: true }
+          : { connect: { id: validatedData.clientId } };
+    }
+    if (validatedData.serverAccountId !== undefined) {
+      websiteData.serverAccount =
+        validatedData.serverAccountId === null
+          ? { disconnect: true }
+          : { connect: { id: validatedData.serverAccountId } };
+    }
+    if (validatedData.googleAdsAccountId !== undefined) {
+      websiteData.googleAdsAccount =
+        validatedData.googleAdsAccountId === null
+          ? { disconnect: true }
+          : { connect: { id: validatedData.googleAdsAccountId } };
+    }
+    if (validatedData.googleAnalyticsAccountId !== undefined) {
+      websiteData.googleAnalyticsAccount =
+        validatedData.googleAnalyticsAccountId === null
+          ? { disconnect: true }
+          : { connect: { id: validatedData.googleAnalyticsAccountId } };
+    }
+    if (validatedData.googleSearchConsoleAccountId !== undefined) {
+      websiteData.googleSearchConsoleAccount =
+        validatedData.googleSearchConsoleAccountId === null
+          ? { disconnect: true }
+          : { connect: { id: validatedData.googleSearchConsoleAccountId } };
+    }
+    if (validatedData.googleTagManagerAccountId !== undefined) {
+      websiteData.googleTagManagerAccount =
+        validatedData.googleTagManagerAccountId === null
+          ? { disconnect: true }
+          : { connect: { id: validatedData.googleTagManagerAccountId } };
+    }
+
+    const website = await websiteRepository.update(id, websiteData);
 
     return ApiResponseHelper.success(website);
   }

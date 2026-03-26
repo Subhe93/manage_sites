@@ -190,7 +190,7 @@ export function DomainsTable({ filters, onPageChange, onSortChange, onViewDomain
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">
-                        {(domain as any).cloudflareDomains?.[0]?.cloudflareAccount?.accountName || '-'}
+                        {domain.cloudflareAccount?.accountName || '-'}
                       </span>
                     </TableCell>
                     <TableCell>

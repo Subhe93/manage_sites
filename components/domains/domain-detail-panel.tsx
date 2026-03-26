@@ -163,7 +163,7 @@ export function DomainDetailPanel({ domainId, onClose }: DomainDetailPanelProps)
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Cloudflare</p>
-                  <p className="font-medium">{(domain as any)?.cloudflareDomains?.[0]?.cloudflareAccount?.accountName || '-'}</p>
+                  <p className="font-medium">{domain?.cloudflareAccount?.accountName || '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Registration Date</p>

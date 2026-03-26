@@ -57,6 +57,16 @@ export class ServerRepository extends BaseRepository<
             providerType: true,
           },
         },
+        costs: {
+          select: {
+            id: true,
+            costAmount: true,
+            currency: true,
+            billingCycle: true,
+            nextBillingDate: true,
+          },
+          take: 1,
+        },
         _count: {
           select: {
             accounts: true,

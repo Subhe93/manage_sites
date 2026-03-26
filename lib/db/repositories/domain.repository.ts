@@ -78,9 +78,11 @@ export class DomainRepository extends BaseRepository<
             websites: true,
           },
         },
-        cloudflareDomains: {
-          include: {
-            cloudflareAccount: true,
+        cloudflareAccount: {
+          select: {
+            id: true,
+            accountName: true,
+            accountEmail: true,
           },
         },
       },
@@ -137,9 +139,11 @@ export class DomainRepository extends BaseRepository<
           websites: true,
         },
       },
-      cloudflareDomains: {
-        include: {
-          cloudflareAccount: true,
+      cloudflareAccount: {
+        select: {
+          id: true,
+          accountName: true,
+          accountEmail: true,
         },
       },
     });

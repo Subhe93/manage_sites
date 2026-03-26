@@ -69,6 +69,7 @@ const createDomainSchema = z.object({
   status: z.nativeEnum(DomainStatus),
   registrarId: z.number().int().positive().optional().nullable(),
   clientId: z.number().int().positive().optional().nullable(),
+  cloudflareAccountId: z.number().int().positive().optional().nullable(),
   registrationDate: z.string().optional().nullable(),
   expiryDate: z.string().optional().nullable(),
   autoRenew: z.boolean().default(true),
@@ -113,6 +114,12 @@ export const POST = asyncHandler(async (req: NextRequest) => {
   if (validatedData.clientId) {
     domainData.client = {
       connect: { id: validatedData.clientId },
+    };
+  }
+
+  if (validatedData.cloudflareAccountId) {
+    domainData.cloudflareAccount = {
+      connect: { id: validatedData.cloudflareAccountId },
     };
   }
 

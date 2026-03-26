@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout'
 import { Input } from '@/components/ui/input'
@@ -14,12 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { mockGoogleSearchConsoleAccounts } from '@/lib/mock-data'
+import { useGoogleSearchConsoleAccount, useGoogleSearchConsoleMutations } from '@/hooks/use-google-services'
 
 export default function EditGoogleSearchConsolePage() {
+  const router = useRouter()
   const params = useParams()
   const id = Number(params.id)
-  const entity = mockGoogleSearchConsoleAccounts.find((item) => item.id === id)
+  const { item: entity, loading } = useGoogleSearchConsoleAccount(id)
+  const { updateItem } = useGoogleSearchConsoleMutations()
 
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
@@ -28,41 +30,47 @@ export default function EditGoogleSearchConsolePage() {
 
   useEffect(() => {
     if (entity) {
-      setAccountName(entity.account_name ?? '')
-      setAccountEmail(entity.account_email ?? '')
+      setAccountName(entity.accountName ?? '')
+      setAccountEmail(entity.accountEmail ?? '')
       setStatus(entity.status ?? '')
       setNotes(entity.notes ?? '')
     }
   }, [entity])
 
-  if (!entity) {
-    return (
-      <div>
-        <p>Not Found</p>
-        <Link href="/google/search-console">Back to Search Console</Link>
-      </div>
-    )
+  if (loading) {
+    return <div className="p-6 text-muted-foreground">Loading...</div>
   }
 
-  const onSubmit = (e: React.FormEvent) => {
+  if (!entity) {
+    return <div className="p-6 text-muted-foreground">Search Console account not found</div>
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      id,
-      account_name: accountName,
-      account_email: accountEmail,
-      status,
-      notes,
-    })
+
+    try {
+      await updateItem(id, {
+        accountName,
+        accountEmail,
+        status: status as 'active' | 'inactive' | 'suspended',
+        notes: notes || null,
+      })
+
+      router.push('/google/search-console')
+    } catch {
+      // handled in hook
+    }
   }
 
   return (
     <FormLayout
       title="Edit Google Search Console Account"
+      description={`Editing ${entity.accountName}`}
       backHref="/google/search-console"
       backLabel="Back to Search Console"
       onSubmit={onSubmit}
     >
-      <FormSection title="Search Console Account" icon={Search}>
+      <FormSection title="Search Console Account" icon={<Search className="h-4 w-4 text-primary" />}>
         <FormFieldWrapper label="Account Name" required>
           <Input
             value={accountName}

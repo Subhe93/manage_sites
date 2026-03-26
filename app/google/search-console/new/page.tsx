@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout'
 import { Input } from '@/components/ui/input'
@@ -12,31 +13,42 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useGoogleSearchConsoleMutations } from '@/hooks/use-google-services'
 
 export default function NewGoogleSearchConsolePage() {
+  const router = useRouter()
+  const { createItem } = useGoogleSearchConsoleMutations()
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState('active')
   const [notes, setNotes] = useState('')
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      account_name: accountName,
-      account_email: accountEmail,
-      status,
-      notes,
-    })
+
+    try {
+      await createItem({
+        accountName,
+        accountEmail,
+        status: status as 'active' | 'inactive' | 'suspended',
+        notes: notes || null,
+      })
+
+      router.push('/google/search-console')
+    } catch {
+      // handled in hook
+    }
   }
 
   return (
     <FormLayout
       title="Add Google Search Console Account"
+      description="Create a new Search Console account"
       backHref="/google/search-console"
       backLabel="Back to Search Console"
       onSubmit={onSubmit}
     >
-      <FormSection title="Search Console Account" icon={Search}>
+      <FormSection title="Search Console Account" icon={<Search className="h-4 w-4 text-primary" />}>
         <FormFieldWrapper label="Account Name" required>
           <Input
             value={accountName}

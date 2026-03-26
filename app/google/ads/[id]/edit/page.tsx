@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChartBar as BarChart3 } from 'lucide-react'
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout'
 import { Input } from '@/components/ui/input'
@@ -14,12 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { mockGoogleAdsAccounts } from '@/lib/mock-data'
+import { useGoogleAdsAccount, useGoogleAdsMutations } from '@/hooks/use-google-services'
 
 export default function EditGoogleAdsPage() {
+  const router = useRouter()
   const params = useParams()
   const id = Number(params.id)
-  const entity = mockGoogleAdsAccounts.find((item) => item.id === id)
+  const { item: entity, loading } = useGoogleAdsAccount(id)
+  const { updateItem } = useGoogleAdsMutations()
 
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
@@ -29,43 +31,49 @@ export default function EditGoogleAdsPage() {
 
   useEffect(() => {
     if (entity) {
-      setAccountName(entity.account_name ?? '')
-      setAccountEmail(entity.account_email ?? '')
-      setCustomerId(entity.customer_id ?? '')
+      setAccountName(entity.accountName ?? '')
+      setAccountEmail(entity.accountEmail ?? '')
+      setCustomerId(entity.customerId ?? '')
       setStatus(entity.status ?? '')
       setNotes(entity.notes ?? '')
     }
   }, [entity])
 
-  if (!entity) {
-    return (
-      <div>
-        <p>Not Found</p>
-        <Link href="/google/ads">Back to Google Ads</Link>
-      </div>
-    )
+  if (loading) {
+    return <div className="p-6 text-muted-foreground">Loading...</div>
   }
 
-  const onSubmit = (e: React.FormEvent) => {
+  if (!entity) {
+    return <div className="p-6 text-muted-foreground">Google Ads account not found</div>
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      id,
-      account_name: accountName,
-      account_email: accountEmail,
-      customer_id: customerId,
-      status,
-      notes,
-    })
+
+    try {
+      await updateItem(id, {
+        accountName,
+        accountEmail,
+        customerId: customerId || null,
+        status: status as 'active' | 'inactive' | 'suspended',
+        notes: notes || null,
+      })
+
+      router.push('/google/ads')
+    } catch {
+      // handled in hook
+    }
   }
 
   return (
     <FormLayout
       title="Edit Google Ads Account"
+      description={`Editing ${entity.accountName}`}
       backHref="/google/ads"
       backLabel="Back to Google Ads"
       onSubmit={onSubmit}
     >
-      <FormSection title="Ads Account" icon={BarChart3}>
+      <FormSection title="Ads Account" icon={<BarChart3 className="h-4 w-4 text-primary" />}>
         <FormFieldWrapper label="Account Name" required>
           <Input
             value={accountName}

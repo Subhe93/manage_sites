@@ -42,7 +42,7 @@ export class CloudflareAccountRepository extends BaseRepository<
       include: {
         _count: {
           select: {
-            domains: true,
+            linkedDomains: true,
           },
         },
       },
@@ -72,7 +72,7 @@ export class CloudflareAccountRepository extends BaseRepository<
     return this.findById(id, {
       _count: {
         select: {
-          domains: true,
+          linkedDomains: true,
         },
       },
     });

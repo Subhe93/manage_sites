@@ -61,6 +61,20 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
     onSortChange(column, newSortOrder);
   };
 
+  const getDaysUntilBilling = (nextBillingDate: string | null | undefined): number | null => {
+    if (!nextBillingDate) return null;
+    const now = new Date();
+    const billing = new Date(nextBillingDate);
+    return Math.ceil((billing.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const getBillingColor = (days: number) => {
+    if (days < 0) return 'text-red-600 font-semibold';
+    if (days <= 7) return 'text-red-600';
+    if (days <= 30) return 'text-amber-600';
+    return 'text-emerald-600';
+  };
+
   const SortableHeader = ({ column, children }: { column: string; children: React.ReactNode }) => {
     const isSorted = filters.sortBy === column;
     const sortOrder = filters.sortOrder;
@@ -159,6 +173,9 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
               <TableHead>Resources</TableHead>
               <SortableHeader column="status">Status</SortableHeader>
               <TableHead>Control Panel</TableHead>
+              <TableHead className="text-right">Cost</TableHead>
+              <TableHead>Next Payment</TableHead>
+              <TableHead className="text-center">Days Left</TableHead>
               <SortableHeader column="createdAt">Created At</SortableHeader>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -166,13 +183,19 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
           <TableBody>
             {servers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
                   No servers found
                 </TableCell>
               </TableRow>
             ) : (
               servers.map((server) => (
                 <TableRow key={server.id}>
+                  {(() => {
+                    const cost = (server as any)?.costs?.[0];
+                    const daysLeft = getDaysUntilBilling(cost?.nextBillingDate);
+
+                    return (
+                      <>
                   <TableCell className="font-medium">{server.serverName}</TableCell>
                   <TableCell>{getServerTypeBadge(server.serverType)}</TableCell>
                   <TableCell>
@@ -216,6 +239,33 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
                       '-'
                     )}
                   </TableCell>
+                  <TableCell className="text-right text-sm">
+                    {cost ? (
+                      <span className="font-medium">
+                        {cost.currency === 'USD' ? '$' : cost.currency + ' '}
+                        {cost.costAmount}
+                        <span className="text-[10px] text-muted-foreground ml-0.5">
+                          /{cost.billingCycle === 'yearly' ? 'yr' : cost.billingCycle === 'monthly' ? 'mo' : cost.billingCycle}
+                        </span>
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {cost?.nextBillingDate
+                      ? new Date(cost.nextBillingDate).toLocaleDateString('en-US')
+                      : '-'}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {daysLeft !== null ? (
+                      <span className={`text-sm font-medium ${getBillingColor(daysLeft)}`}>
+                        {daysLeft < 0 ? `${Math.abs(daysLeft)}d ago` : `${daysLeft}d`}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                   <TableCell>
                     {new Date(server.createdAt).toLocaleDateString('en-US')}
                   </TableCell>
@@ -243,6 +293,9 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
+                      </>
+                    );
+                  })()}
                 </TableRow>
               ))
             )}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChartBar as BarChart3 } from 'lucide-react'
 import { FormLayout, FormSection, FormFieldWrapper } from '@/components/forms/form-layout'
 import { Input } from '@/components/ui/input'
@@ -12,39 +13,50 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useGoogleAnalyticsMutations } from '@/hooks/use-google-services'
 
 export default function NewGoogleAnalyticsPage() {
+  const router = useRouter()
+  const { createItem } = useGoogleAnalyticsMutations()
   const [accountName, setAccountName] = useState('')
   const [accountEmail, setAccountEmail] = useState('')
   const [accountId, setAccountId] = useState('')
   const [propertyId, setPropertyId] = useState('')
   const [measurementId, setMeasurementId] = useState('')
-  const [analyticsVersion, setAnalyticsVersion] = useState('')
-  const [status, setStatus] = useState('')
+  const [analyticsVersion, setAnalyticsVersion] = useState('ga4')
+  const [status, setStatus] = useState('active')
   const [notes, setNotes] = useState('')
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      account_name: accountName,
-      account_email: accountEmail,
-      account_id: accountId,
-      property_id: propertyId,
-      measurement_id: measurementId,
-      analytics_version: analyticsVersion,
-      status,
-      notes,
-    })
+
+    try {
+      await createItem({
+        accountName,
+        accountEmail,
+        accountId: accountId || null,
+        propertyId: propertyId || null,
+        measurementId: measurementId || null,
+        analyticsVersion: analyticsVersion as 'ua' | 'ga4',
+        status: status as 'active' | 'inactive' | 'suspended',
+        notes: notes || null,
+      })
+
+      router.push('/google/analytics')
+    } catch {
+      // handled in hook
+    }
   }
 
   return (
     <FormLayout
       title="Add Google Analytics Account"
+      description="Create a new Google Analytics account"
       backHref="/google/analytics"
       backLabel="Back to Google Analytics"
       onSubmit={onSubmit}
     >
-      <FormSection title="Analytics Account" icon={BarChart3}>
+      <FormSection title="Analytics Account" icon={<BarChart3 className="h-4 w-4 text-primary" />}>
         <FormFieldWrapper label="Account Name" required>
           <Input
             value={accountName}

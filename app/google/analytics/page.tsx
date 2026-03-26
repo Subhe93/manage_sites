@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,32 +22,46 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartBar as BarChart3, CircleCheck as CheckCircle2, MoveHorizontal as MoreHorizontal, Pencil, Plus, Search, Trash2, Eye, Circle as XCircle, ArrowUpDown } from 'lucide-react';
-import { mockGoogleAnalyticsAccounts } from '@/lib/mock-data';
+import { useGoogleAnalyticsAccounts, useGoogleAnalyticsMutations } from '@/hooks/use-google-services';
 
 export default function GoogleAnalyticsPage() {
+  const router = useRouter();
+  const { items: accounts, loading, refetch } = useGoogleAnalyticsAccounts();
+  const { deleteItem } = useGoogleAnalyticsMutations();
   const [search, setSearch] = useState('');
 
-  const totalAccounts = mockGoogleAnalyticsAccounts.length;
-  const activeAccounts = mockGoogleAnalyticsAccounts.filter(
+  const totalAccounts = accounts.length;
+  const activeAccounts = accounts.filter(
     (a) => a.status === 'active'
   ).length;
-  const inactiveAccounts = mockGoogleAnalyticsAccounts.filter(
+  const inactiveAccounts = accounts.filter(
     (a) => a.status === 'inactive'
   ).length;
-  const ga4Accounts = mockGoogleAnalyticsAccounts.filter(
-    (a) => a.analytics_version === 'ga4'
+  const ga4Accounts = accounts.filter(
+    (a) => a.analyticsVersion === 'ga4'
   ).length;
-  const uaAccounts = mockGoogleAnalyticsAccounts.filter(
-    (a) => a.analytics_version === 'ua'
+  const uaAccounts = accounts.filter(
+    (a) => a.analyticsVersion === 'ua'
   ).length;
 
-  const filteredAccounts = mockGoogleAnalyticsAccounts.filter(
+  const filteredAccounts = accounts.filter(
     (account) =>
-      account.account_name.toLowerCase().includes(search.toLowerCase()) ||
-      account.account_email.toLowerCase().includes(search.toLowerCase()) ||
-      account.account_id.toLowerCase().includes(search.toLowerCase()) ||
-      account.measurement_id.toLowerCase().includes(search.toLowerCase())
+      account.accountName.toLowerCase().includes(search.toLowerCase()) ||
+      account.accountEmail.toLowerCase().includes(search.toLowerCase()) ||
+      (account.accountId || '').toLowerCase().includes(search.toLowerCase()) ||
+      (account.measurementId || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleDeleteAccount = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this account?')) return;
+
+    try {
+      await deleteItem(id);
+      refetch();
+    } catch {
+      // handled in hook
+    }
+  };
 
   const statusColor = (status: string) => {
     switch (status) {
@@ -81,7 +96,7 @@ export default function GoogleAnalyticsPage() {
               Manage Google Analytics accounts and properties
             </p>
           </div>
-          <Button size="sm" className="h-9 gap-2">
+          <Button size="sm" className="h-9 gap-2" onClick={() => router.push('/google/analytics/new')}>
             <Plus className="h-4 w-4" />
             Add Account
           </Button>
@@ -165,30 +180,36 @@ export default function GoogleAnalyticsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAccounts.map((account) => (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                      Loading accounts...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredAccounts.map((account) => (
                   <TableRow key={account.id}>
                     <TableCell className="font-medium">
-                      {account.account_name}
+                      {account.accountName}
                     </TableCell>
-                    <TableCell>{account.account_email}</TableCell>
+                    <TableCell>{account.accountEmail}</TableCell>
                     <TableCell>
                       <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                        {account.account_id}
+                        {account.accountId || '-'}
                       </code>
                     </TableCell>
-                    <TableCell>{account.property_id || '-'}</TableCell>
+                    <TableCell>{account.propertyId || '-'}</TableCell>
                     <TableCell>
-                      {account.measurement_id ? (
+                      {account.measurementId ? (
                         <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                          {account.measurement_id}
+                          {account.measurementId}
                         </code>
                       ) : (
                         '-'
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className={versionColor(account.analytics_version)}>
-                        {account.analytics_version === 'ga4' ? 'GA4' : 'UA'}
+                      <Badge variant="secondary" className={versionColor(account.analyticsVersion)}>
+                        {account.analyticsVersion === 'ga4' ? 'GA4' : 'UA'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -199,7 +220,7 @@ export default function GoogleAnalyticsPage() {
                     <TableCell className="max-w-[200px] truncate">
                       {account.notes || '-'}
                     </TableCell>
-                    <TableCell>{account.created_at}</TableCell>
+                    <TableCell>{new Date(account.createdAt).toLocaleDateString('en-US')}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -212,11 +233,11 @@ export default function GoogleAnalyticsPage() {
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/google/analytics/${account.id}/edit`)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteAccount(account.id)}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete
                           </DropdownMenuItem>

@@ -1,55 +1,69 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Monitor, Activity, Wrench, Archive, Code } from 'lucide-react';
-import { mockWebsites } from '@/lib/mock-data';
-import type { WebsiteStatus } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useWebsiteStats } from '@/hooks/use-websites';
+import { Monitor, Activity, Wrench, AlertCircle, Archive } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface WebsitesStatsProps {
-  activeFilter: WebsiteStatus | 'all';
-  onFilterChange: (filter: WebsiteStatus | 'all') => void;
-}
+export function WebsitesStats() {
+  const { stats, loading } = useWebsiteStats();
 
-export function WebsitesStats({ activeFilter, onFilterChange }: WebsitesStatsProps) {
-  const total = mockWebsites.length;
-  const active = mockWebsites.filter((w) => w.status === 'active').length;
-  const maintenance = mockWebsites.filter((w) => w.status === 'maintenance').length;
-  const suspended = mockWebsites.filter((w) => w.status === 'suspended').length;
-  const production = mockWebsites.filter((w) => w.environment === 'production').length;
-
-  const cards = [
-    { label: 'All Websites', value: total, icon: Monitor, filter: 'all' as const, color: 'text-primary', bg: 'bg-primary/10', clickable: true },
-    { label: 'Active', value: active, icon: Activity, filter: 'active' as const, color: 'text-emerald-600', bg: 'bg-emerald-500/10', clickable: true },
-    { label: 'Maintenance', value: maintenance, icon: Wrench, filter: 'maintenance' as const, color: 'text-amber-600', bg: 'bg-amber-500/10', clickable: true },
-    { label: 'Suspended', value: suspended, icon: Archive, filter: 'suspended' as const, color: 'text-red-600', bg: 'bg-red-500/10', clickable: true },
-    { label: 'Production', value: production, icon: Code, filter: 'all' as const, color: 'text-sky-600', bg: 'bg-sky-500/10', clickable: false },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-      {cards.map((card) => {
-        const Icon = card.icon;
-        const isSelected = card.clickable && activeFilter === card.filter;
-        return (
-          <Card
-            key={card.label}
-            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
-              isSelected ? 'ring-2 ring-primary shadow-md' : ''
-            }`}
-            onClick={() => card.clickable && onFilterChange(card.filter)}
-          >
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.bg}`}>
-                <Icon className={`h-5 w-5 ${card.color}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{card.value}</p>
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-              </div>
+  if (loading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16" />
             </CardContent>
           </Card>
-        );
-      })}
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Websites</CardTitle>
+          <Monitor className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{stats?.total || 0}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Active</CardTitle>
+          <Activity className="h-4 w-4 text-green-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-green-600">{stats?.active || 0}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Maintenance</CardTitle>
+          <Wrench className="h-4 w-4 text-amber-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-amber-600">{stats?.maintenance || 0}</div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Suspended</CardTitle>
+          <AlertCircle className="h-4 w-4 text-red-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-red-600">{stats?.suspended || 0}</div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
