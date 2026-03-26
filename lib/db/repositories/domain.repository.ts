@@ -75,7 +75,6 @@ export class DomainRepository extends BaseRepository<
         _count: {
           select: {
             costs: true,
-            websites: true,
           },
         },
         cloudflareAccount: {
@@ -132,11 +131,10 @@ export class DomainRepository extends BaseRepository<
         },
       },
       costs: true,
-      websites: true,
+      website: true,
       _count: {
         select: {
           costs: true,
-          websites: true,
         },
       },
       cloudflareAccount: {
@@ -216,7 +214,7 @@ export class DomainRepository extends BaseRepository<
       include: {
         registrar: true,
         costs: true,
-        websites: true,
+        website: true,
       },
       orderBy: {
         domainName: 'asc',

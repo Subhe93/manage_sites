@@ -15,6 +15,7 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Overview', href: '/overview', icon: Search },
   { label: 'Clients', href: '/clients', icon: Users },
   { label: 'Domains', href: '/domains', icon: Globe },
   { label: 'Servers', href: '/servers', icon: Server },

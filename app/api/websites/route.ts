@@ -75,6 +75,12 @@ export const GET = asyncHandler(async (req: NextRequest) => {
           },
         },
       },
+      server: {
+        select: {
+          id: true,
+          serverName: true,
+        },
+      },
       googleAdsAccount: {
         select: {
           id: true,
@@ -121,6 +127,7 @@ const createWebsiteSchema = z.object({
   domainId: z.number().int().positive().optional().nullable(),
   clientId: z.number().int().positive().optional().nullable(),
   serverAccountId: z.number().int().positive().optional().nullable(),
+  serverId: z.number().int().positive().optional().nullable(),
   googleAdsAccountId: z.number().int().positive().optional().nullable(),
   googleAnalyticsAccountId: z.number().int().positive().optional().nullable(),
   googleSearchConsoleAccountId: z.number().int().positive().optional().nullable(),
@@ -130,6 +137,8 @@ const createWebsiteSchema = z.object({
   environment: z.enum(['development', 'staging', 'production']),
   websiteUrl: z.string().url().optional().nullable(),
   adminUrl: z.string().url().optional().nullable(),
+  adminUsername: z.string().optional().nullable(),
+  adminPassword: z.string().optional().nullable(),
   apiEndpoint: z.string().url().optional().nullable(),
   databaseName: z.string().optional().nullable(),
   databaseType: z.string().optional().nullable(),
@@ -166,6 +175,9 @@ export const POST = asyncHandler(async (req: NextRequest) => {
   if (validatedData.serverAccountId) {
     websiteData.serverAccount = { connect: { id: validatedData.serverAccountId } };
   }
+  if (validatedData.serverId) {
+    websiteData.server = { connect: { id: validatedData.serverId } };
+  }
   if (validatedData.googleAdsAccountId) {
     websiteData.googleAdsAccount = { connect: { id: validatedData.googleAdsAccountId } };
   }
@@ -180,6 +192,17 @@ export const POST = asyncHandler(async (req: NextRequest) => {
   if (validatedData.googleTagManagerAccountId) {
     websiteData.googleTagManagerAccount = {
       connect: { id: validatedData.googleTagManagerAccountId },
+    };
+  }
+
+  if (validatedData.adminUsername || validatedData.adminPassword) {
+    websiteData.credentials = {
+      create: [{
+        credentialType: 'admin',
+        username: validatedData.adminUsername || undefined,
+        passwordEncrypted: validatedData.adminPassword || undefined,
+        accessUrl: validatedData.adminUrl || undefined,
+      }],
     };
   }
 

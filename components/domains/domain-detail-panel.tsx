@@ -250,39 +250,34 @@ export function DomainDetailPanel({ domainId, onClose }: DomainDetailPanelProps)
             </Card>
           )}
 
-          {/* Linked Websites */}
-          {(domain as any)?.websites && (domain as any).websites.length > 0 && (
+          {/* Linked Website */}
+          {(domain as any)?.website && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Server className="h-4 w-4 text-primary" />
-                  Linked Websites ({(domain as any).websites.length})
+                  Linked Website
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {(domain as any).websites.map((website: any) => (
-                    <div
-                      key={website.id}
-                      className="flex items-center justify-between rounded-md border p-2.5 hover:bg-muted/30 transition-colors"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{website.websiteName}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Badge variant="secondary" className="text-[10px] capitalize">{website.websiteType}</Badge>
-                          <Badge variant="secondary" className="text-[10px] capitalize">{website.environment}</Badge>
-                        </div>
+                  <div className="flex items-center justify-between rounded-md border p-2.5 hover:bg-muted/30 transition-colors">
+                    <div>
+                      <p className="text-sm font-medium">{(domain as any).website.websiteName}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Badge variant="secondary" className="text-[10px] capitalize">{(domain as any).website.websiteType}</Badge>
+                        <Badge variant="secondary" className="text-[10px] capitalize">{(domain as any).website.environment}</Badge>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] capitalize ${
-                          website.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                        }`}
-                      >
-                        {website.status}
-                      </Badge>
                     </div>
-                  ))}
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] capitalize ${
+                        (domain as any).website.status === 'active' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                      }`}
+                    >
+                      {(domain as any).website.status}
+                    </Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -337,6 +337,7 @@ model User {
 
   createdClients         Client[]              @relation("ClientCreator")
   permissions            UserPermission[]
+  savedFilters           SavedFilter[]
   sentNotifications      Notification[]
   notificationSettings   NotificationSettings[]
   activityLogs           ActivityLog[]
@@ -413,7 +414,7 @@ model Domain {
   cloudflareAccount       CloudflareAccount? @relation(fields: [cloudflareAccountId], references: [id])
   costs                   DomainCost[]
   whoisHistory            WhoisHistory[]
-  websites                Website[]
+  website                 Website?
   cloudflareDomains       CloudflareDomain[]
   googleAdsCampaigns      GoogleAdsCampaign[]
   gscProperties           GoogleSearchConsoleProperty[]
@@ -478,6 +479,7 @@ model Server {
   accounts        ServerAccount[]
   costs           ServerCost[]
   monitoring      ServerMonitoring[]
+  websites        Website[]
 
   @@map("servers")
 }
@@ -540,8 +542,9 @@ model ServerMonitoring {
 model Website {
   id              Int           @id @default(autoincrement())
   websiteName     String        @map("website_name")
-  domainId        Int?          @map("domain_id")
+  domainId        Int?          @unique @map("domain_id")
   clientId        Int?          @map("client_id")
+  serverId        Int?          @map("server_id")
   serverAccountId Int?          @map("server_account_id")
   googleAdsAccountId Int?       @map("google_ads_account_id")
   googleAnalyticsAccountId Int? @map("google_analytics_account_id")
@@ -563,6 +566,7 @@ model Website {
 
   domain          Domain?           @relation(fields: [domainId], references: [id])
   client          Client?           @relation(fields: [clientId], references: [id])
+  server          Server?           @relation(fields: [serverId], references: [id])
   serverAccount   ServerAccount?    @relation(fields: [serverAccountId], references: [id])
   googleAdsAccount GoogleAdsAccount? @relation(fields: [googleAdsAccountId], references: [id])
   googleAnalyticsAccount GoogleAnalyticsAccount? @relation(fields: [googleAnalyticsAccountId], references: [id])
@@ -576,6 +580,7 @@ model Website {
   gscProperties   GoogleSearchConsoleProperty[]
   gtmContainers   GoogleTagManagerContainer[]
   uptimeChecks    UptimeCheck[]
+  subdomains      Subdomain[]
 
   @@map("websites")
 }
@@ -630,6 +635,25 @@ model WebsiteCredential {
   website           Website        @relation(fields: [websiteId], references: [id], onDelete: Cascade)
 
   @@map("website_credentials")
+}
+
+model Subdomain {
+  id                Int           @id @default(autoincrement())
+  websiteId         Int           @map("website_id")
+  subdomainName     String        @map("subdomain_name")
+  fullUrl           String?       @map("full_url")
+  websiteType       WebsiteType   @map("website_type")
+  framework         String?
+  adminUrl          String?       @map("admin_url")
+  adminUsername     String?       @map("admin_username")
+  adminPassword     String?       @map("admin_password")
+  notes             String?
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  website           Website       @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@map("subdomains")
 }
 
 model WebsiteCost {
@@ -1080,4 +1104,20 @@ model SystemSettings {
   updater      User?       @relation(fields: [updatedBy], references: [id])
 
   @@map("system_settings")
+}
+
+model SavedFilter {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  name        String
+  page        String   
+  filters     Json     
+  columns     Json?    
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_filters")
 }

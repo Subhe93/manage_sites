@@ -9,3 +9,4 @@ export * from './user.repository';
 export * from './website.repository';
 export * from './cloudflare-account.repository';
 export * from './cloudflare-domain.repository';
+export * from './saved-filter.repository';

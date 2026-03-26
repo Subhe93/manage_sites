@@ -31,6 +31,7 @@ const updateWebsiteSchema = z.object({
   domainId: z.number().int().positive().optional().nullable(),
   clientId: z.number().int().positive().optional().nullable(),
   serverAccountId: z.number().int().positive().optional().nullable(),
+  serverId: z.number().int().positive().optional().nullable(),
   googleAdsAccountId: z.number().int().positive().optional().nullable(),
   googleAnalyticsAccountId: z.number().int().positive().optional().nullable(),
   googleSearchConsoleAccountId: z.number().int().positive().optional().nullable(),
@@ -42,12 +43,25 @@ const updateWebsiteSchema = z.object({
   environment: z.enum(['development', 'staging', 'production']).optional(),
   websiteUrl: z.string().url().optional().nullable(),
   adminUrl: z.string().url().optional().nullable(),
+  adminUsername: z.string().optional().nullable(),
+  adminPassword: z.string().optional().nullable(),
   apiEndpoint: z.string().url().optional().nullable(),
   databaseName: z.string().optional().nullable(),
   databaseType: z.string().optional().nullable(),
   status: z.enum(['active', 'maintenance', 'suspended', 'archived']).optional(),
   description: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  subdomains: z.array(z.object({
+    id: z.number().int().positive().optional(),
+    subdomainName: z.string().min(1).max(255),
+    fullUrl: z.string().url().optional().nullable(),
+    websiteType: z.enum(['wordpress', 'spa', 'custom', 'mobile_app', 'static', 'ecommerce']),
+    framework: z.string().optional().nullable(),
+    adminUrl: z.string().url().optional().nullable(),
+    adminUsername: z.string().optional().nullable(),
+    adminPassword: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+  })).optional(),
 });
 
 export const PUT = asyncHandler(
@@ -56,7 +70,7 @@ export const PUT = asyncHandler(
     const body = await req.json();
     const validatedData = updateWebsiteSchema.parse(body);
 
-    const existing = await websiteRepository.findById(id);
+    const existing = await websiteRepository.findByIdWithRelations(id);
     if (!existing) {
       return ApiResponseHelper.notFound('Website not found');
     }
@@ -94,6 +108,12 @@ export const PUT = asyncHandler(
           ? { disconnect: true }
           : { connect: { id: validatedData.serverAccountId } };
     }
+    if (validatedData.serverId !== undefined) {
+      websiteData.server =
+        validatedData.serverId === null
+          ? { disconnect: true }
+          : { connect: { id: validatedData.serverId } };
+    }
     if (validatedData.googleAdsAccountId !== undefined) {
       websiteData.googleAdsAccount =
         validatedData.googleAdsAccountId === null
@@ -117,6 +137,72 @@ export const PUT = asyncHandler(
         validatedData.googleTagManagerAccountId === null
           ? { disconnect: true }
           : { connect: { id: validatedData.googleTagManagerAccountId } };
+    }
+
+    if (validatedData.adminUsername !== undefined || validatedData.adminPassword !== undefined) {
+      const existingAdminCred = existing.credentials?.find((c: any) => c.credentialType === 'admin');
+      if (existingAdminCred) {
+        websiteData.credentials = {
+          update: {
+            where: { id: existingAdminCred.id },
+            data: {
+              username: validatedData.adminUsername !== undefined ? validatedData.adminUsername : undefined,
+              passwordEncrypted: validatedData.adminPassword !== undefined ? validatedData.adminPassword : undefined,
+              accessUrl: validatedData.adminUrl !== undefined ? validatedData.adminUrl : undefined,
+            }
+          }
+        };
+      } else if (validatedData.adminUsername || validatedData.adminPassword) {
+        websiteData.credentials = {
+          create: [{
+            credentialType: 'admin',
+            username: validatedData.adminUsername || undefined,
+            passwordEncrypted: validatedData.adminPassword || undefined,
+            accessUrl: validatedData.adminUrl || undefined,
+          }]
+        };
+      }
+    }
+
+    if (validatedData.subdomains !== undefined) {
+      const existingSubdomains = existing.subdomains || [];
+      const incomingWithIds = validatedData.subdomains.filter((s: any) => s.id);
+      const incomingWithoutIds = validatedData.subdomains.filter((s: any) => !s.id);
+      const incomingIds = incomingWithIds.map((s: any) => s.id);
+      
+      const toDelete = existingSubdomains.filter((s: any) => !incomingIds.includes(s.id)).map((s: any) => s.id);
+      const toUpdate = incomingWithIds.map((s: any) => ({
+        where: { id: s.id },
+        data: {
+          subdomainName: s.subdomainName,
+          fullUrl: s.fullUrl || null,
+          websiteType: s.websiteType,
+          framework: s.framework || null,
+          adminUrl: s.adminUrl || null,
+          adminUsername: s.adminUsername || null,
+          adminPassword: s.adminPassword || null,
+          notes: s.notes || null,
+        }
+      }));
+      const toCreate = incomingWithoutIds.map((s: any) => ({
+        subdomainName: s.subdomainName,
+        fullUrl: s.fullUrl || null,
+        websiteType: s.websiteType,
+        framework: s.framework || null,
+        adminUrl: s.adminUrl || null,
+        adminUsername: s.adminUsername || null,
+        adminPassword: s.adminPassword || null,
+        notes: s.notes || null,
+      }));
+
+      websiteData.subdomains = {};
+      if (toDelete.length > 0) websiteData.subdomains.deleteMany = { id: { in: toDelete } };
+      if (toCreate.length > 0) websiteData.subdomains.create = toCreate;
+      if (toUpdate.length > 0) websiteData.subdomains.update = toUpdate;
+
+      if (Object.keys(websiteData.subdomains).length === 0) {
+        delete websiteData.subdomains;
+      }
     }
 
     const website = await websiteRepository.update(id, websiteData);

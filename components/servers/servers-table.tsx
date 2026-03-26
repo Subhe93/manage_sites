@@ -172,6 +172,7 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
               <TableHead>Provider</TableHead>
               <TableHead>Resources</TableHead>
               <SortableHeader column="status">Status</SortableHeader>
+              <TableHead className="text-center">Websites</TableHead>
               <TableHead>Control Panel</TableHead>
               <TableHead className="text-right">Cost</TableHead>
               <TableHead>Next Payment</TableHead>
@@ -220,6 +221,11 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(server.status)}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary" className="font-mono">
+                      {server._count?.websites || 0}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     {server.controlPanel && server.controlPanel !== 'none' ? (
                       <div className="flex items-center gap-1">

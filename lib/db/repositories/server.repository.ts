@@ -72,6 +72,7 @@ export class ServerRepository extends BaseRepository<
             accounts: true,
             costs: true,
             monitoring: true,
+            websites: true,
           },
         },
       },
@@ -119,6 +120,7 @@ export class ServerRepository extends BaseRepository<
           accounts: true,
           costs: true,
           monitoring: true,
+          websites: true,
         },
       },
     });

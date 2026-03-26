@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { useWebsites, useWebsiteMutations } from '@/hooks/use-websites';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WebsiteDetailsSheet } from './website-details-sheet';
 
 interface WebsitesTableProps {
   filters: any;
@@ -53,6 +54,7 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
   const { deleteWebsite } = useWebsiteMutations();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedWebsiteId, setSelectedWebsiteId] = useState<number | null>(null);
 
   const handleSort = (column: string) => {
     const newSortOrder =
@@ -188,7 +190,11 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
               </TableRow>
             ) : (
               websites.map((website) => (
-                <TableRow key={website.id}>
+                <TableRow 
+                  key={website.id}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => setSelectedWebsiteId(website.id)}
+                >
                   <TableCell className="font-medium">{website.websiteName}</TableCell>
                   <TableCell>
                     {website.client ? (
@@ -200,11 +206,14 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
                   <TableCell>{getTypeBadge(website.websiteType)}</TableCell>
                   <TableCell>{getEnvBadge(website.environment)}</TableCell>
                   <TableCell>
-                    {website.serverAccount?.server ? (
-                      <span className="text-sm">{website.serverAccount.server.serverName}</span>
-                    ) : (
-                      '-'
-                    )}
+                    {(() => {
+                      const server = website.server || website.serverAccount?.server;
+                      return server ? (
+                        <span className="text-sm font-medium">{server.serverName}</span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>{getStatusBadge(website.status)}</TableCell>
                   <TableCell>
@@ -214,6 +223,7 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <span className="truncate max-w-[150px]">
                           {website.websiteUrl.replace('https://', '').replace('http://', '')}
@@ -230,19 +240,30 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenuItem
-                          onClick={() => router.push(`/websites/${website.id}/edit`)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/websites/${website.id}/edit`);
+                          }}
                         >
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => setDeleteId(website.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteId(website.id);
+                          }}
                           className="text-red-600"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -313,6 +334,11 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <WebsiteDetailsSheet 
+        websiteId={selectedWebsiteId} 
+        onClose={() => setSelectedWebsiteId(null)} 
+      />
     </>
   );
 }

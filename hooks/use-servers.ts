@@ -28,6 +28,7 @@ export interface Server {
     accounts: number;
     costs: number;
     monitoring: number;
+    websites: number;
   };
 }
 

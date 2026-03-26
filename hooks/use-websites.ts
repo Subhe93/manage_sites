@@ -6,6 +6,7 @@ export interface Website {
   websiteName: string;
   domainId: number | null;
   clientId: number | null;
+  serverId: number | null;
   serverAccountId: number | null;
   googleAdsAccountId: number | null;
   googleAnalyticsAccountId: number | null;
@@ -31,6 +32,10 @@ export interface Website {
   client?: {
     id: number;
     clientName: string;
+  };
+  server?: {
+    id: number;
+    serverName: string;
   };
   serverAccount?: {
     id: number;
@@ -61,6 +66,24 @@ export interface Website {
     costs: number;
     uptimeChecks: number;
   };
+  credentials?: {
+    id: number;
+    credentialType: string;
+    username: string | null;
+    passwordEncrypted: string | null;
+    accessUrl: string | null;
+  }[];
+  subdomains?: {
+    id?: number;
+    subdomainName: string;
+    fullUrl: string | null;
+    websiteType: string;
+    framework: string | null;
+    adminUrl: string | null;
+    adminUsername: string | null;
+    adminPassword: string | null;
+    notes: string | null;
+  }[];
 }
 
 export interface WebsiteFilters {

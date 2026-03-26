@@ -19,6 +19,7 @@ export class WebsiteRepository extends BaseRepository<
       include: {
         domain: true,
         client: true,
+        server: true,
         serverAccount: {
           include: {
             server: true,
@@ -37,6 +38,7 @@ export class WebsiteRepository extends BaseRepository<
             },
           },
         },
+        subdomains: true,
       },
     });
   }
@@ -49,6 +51,7 @@ export class WebsiteRepository extends BaseRepository<
       where: { clientId },
       include: {
         domain: true,
+        server: true,
         serverAccount: {
           include: {
             server: true,
@@ -70,6 +73,7 @@ export class WebsiteRepository extends BaseRepository<
       include: {
         domain: true,
         client: true,
+        server: true,
       },
     });
   }
@@ -83,6 +87,7 @@ export class WebsiteRepository extends BaseRepository<
       include: {
         domain: true,
         client: true,
+        server: true,
       },
     });
   }
@@ -96,6 +101,7 @@ export class WebsiteRepository extends BaseRepository<
       include: {
         domain: true,
         client: true,
+        server: true,
         uptimeChecks: {
           where: { isActive: true },
         },
@@ -112,6 +118,7 @@ export class WebsiteRepository extends BaseRepository<
       include: {
         domain: true,
         client: true,
+        server: true,
       },
     });
   }
@@ -158,6 +165,7 @@ export class WebsiteRepository extends BaseRepository<
       include: {
         domain: true,
         client: true,
+        server: true,
       },
     });
   }
