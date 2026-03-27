@@ -3,6 +3,7 @@ import { websiteRepository } from '@/lib/db/repositories';
 import { ApiResponseHelper } from '@/lib/api/response';
 import { asyncHandler } from '@/lib/api/error-handler';
 import { z } from 'zod';
+import { getUserFromRequest, canAccess, canAccessEntity } from '@/lib/permissions';
 
 /**
  * GET /api/websites/[id]
@@ -10,12 +11,26 @@ import { z } from 'zod';
  */
 export const GET = asyncHandler(
   async (req: NextRequest, { params }: { params: { id: string } }) => {
+    // ✅ فحص الصلاحيات
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return ApiResponseHelper.unauthorized('Not authenticated');
+    }
+    if (!canAccess(user, 'website', 'view')) {
+      return ApiResponseHelper.unauthorized('Access denied to websites');
+    }
+
     const id = parseInt(params.id);
 
     const website = await websiteRepository.findByIdWithRelations(id);
 
     if (!website) {
       return ApiResponseHelper.notFound('Website not found');
+    }
+
+    // ✅ فحص صلاحيات الكائن الفردي
+    if (!canAccessEntity(user, 'website', id, 'view')) {
+      return ApiResponseHelper.unauthorized('Access denied to this website');
     }
 
     return ApiResponseHelper.success(website);
@@ -62,10 +77,20 @@ const updateWebsiteSchema = z.object({
     adminPassword: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
   })).optional(),
+  customFieldValues: z.record(z.any()).optional(),
 });
 
 export const PUT = asyncHandler(
   async (req: NextRequest, { params }: { params: { id: string } }) => {
+    // ✅ فحص الصلاحيات
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return ApiResponseHelper.unauthorized('Not authenticated');
+    }
+    if (!canAccess(user, 'website', 'edit')) {
+      return ApiResponseHelper.unauthorized('Permission denied - edit access required');
+    }
+
     const id = parseInt(params.id);
     const body = await req.json();
     const validatedData = updateWebsiteSchema.parse(body);
@@ -73,6 +98,11 @@ export const PUT = asyncHandler(
     const existing = await websiteRepository.findByIdWithRelations(id);
     if (!existing) {
       return ApiResponseHelper.notFound('Website not found');
+    }
+
+    // ✅ فحص صلاحيات الكائن الفردي
+    if (!canAccessEntity(user, 'website', id, 'edit')) {
+      return ApiResponseHelper.unauthorized('Access denied to edit this website');
     }
 
     const websiteData: any = {};
@@ -205,6 +235,20 @@ export const PUT = asyncHandler(
       }
     }
 
+    if (validatedData.customFieldValues !== undefined) {
+      const cfvs = Object.entries(validatedData.customFieldValues)
+        .filter(([_, val]) => val !== undefined && val !== null && val !== '')
+        .map(([id, val]) => ({
+          fieldDefinitionId: parseInt(id),
+          fieldValue: String(val),
+          entityType: 'website'
+        }));
+      websiteData.customFieldValues = { deleteMany: {} };
+      if (cfvs.length > 0) {
+        websiteData.customFieldValues.create = cfvs;
+      }
+    }
+
     const website = await websiteRepository.update(id, websiteData);
 
     return ApiResponseHelper.success(website);
@@ -217,11 +261,25 @@ export const PUT = asyncHandler(
  */
 export const DELETE = asyncHandler(
   async (req: NextRequest, { params }: { params: { id: string } }) => {
+    // ✅ فحص الصلاحيات
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return ApiResponseHelper.unauthorized('Not authenticated');
+    }
+    if (!canAccess(user, 'website', 'admin')) {
+      return ApiResponseHelper.unauthorized('Permission denied - admin access required');
+    }
+
     const id = parseInt(params.id);
 
     const existing = await websiteRepository.findById(id);
     if (!existing) {
       return ApiResponseHelper.notFound('Website not found');
+    }
+
+    // ✅ فحص صلاحيات الكائن الفردي
+    if (!canAccessEntity(user, 'website', id, 'admin')) {
+      return ApiResponseHelper.unauthorized('Access denied to delete this website');
     }
 
     await websiteRepository.delete(id);

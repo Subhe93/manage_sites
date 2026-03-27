@@ -69,12 +69,8 @@ export function UserForm({ user, mode }: UserFormProps) {
     }
 
     try {
-      const submitData = { ...formData };
-      
-      // Remove password if empty in edit mode
-      if (mode === 'edit' && !submitData.password) {
-        delete submitData.password;
-      }
+      const { password, ...rest } = formData;
+      const submitData = (mode === 'edit' && !password) ? rest : { ...rest, password };
 
       if (mode === 'create') {
         await createUser(submitData);

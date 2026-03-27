@@ -59,7 +59,7 @@ export function ServersStats() {
         </CardContent>
       </Card>
 
-      {Object.entries(stats?.byType || {}).map(([type, count]) => {
+      {Object.entries(stats?.byType || {}).map(([type, count]: [string, any]) => {
         const Icon = typeIcons[type] || Server;
         return (
           <Card key={type}>

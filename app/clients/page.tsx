@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { ClientsStats } from '@/components/clients/clients-stats';
 import { ClientsFilters } from '@/components/clients/clients-filters';
 import { ClientsTable } from '@/components/clients/clients-table';
+import { PermissionGate } from '@/components/auth/permission-gate';
 
 export default function ClientsPage() {
   const router = useRouter();
@@ -49,35 +50,39 @@ export default function ClientsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Clients</h1>
-          <p className="text-gray-500 mt-1">Manage your clients and customers</p>
+    <PermissionGate section="clients" level="view">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Clients</h1>
+            <p className="text-gray-500 mt-1">Manage your clients and customers</p>
+          </div>
+          <PermissionGate section="clients" level="edit">
+            <Button onClick={() => router.push('/clients/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Client
+            </Button>
+          </PermissionGate>
         </div>
-        <Button onClick={() => router.push('/clients/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Client
-        </Button>
+
+        {/* Stats */}
+        <ClientsStats />
+
+        {/* Filters */}
+        <ClientsFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={handleReset}
+        />
+
+        {/* Table */}
+        <ClientsTable
+          filters={filters}
+          onPageChange={handlePageChange}
+          onSortChange={handleSortChange}
+        />
       </div>
-
-      {/* Stats */}
-      <ClientsStats />
-
-      {/* Filters */}
-      <ClientsFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onReset={handleReset}
-      />
-
-      {/* Table */}
-      <ClientsTable
-        filters={filters}
-        onPageChange={handlePageChange}
-        onSortChange={handleSortChange}
-      />
-    </div>
+    </PermissionGate>
   );
 }

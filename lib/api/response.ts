@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
+  meta?: any;
   error?: {
     message: string;
     code?: string;
@@ -27,11 +28,12 @@ export class ApiResponseHelper {
   /**
    * استجابة ناجحة
    */
-  static success<T>(data: T, status: number = 200): NextResponse<ApiResponse<T>> {
+  static success<T>(data: T, status: number = 200, meta?: any): NextResponse<ApiResponse<T>> {
     return NextResponse.json(
       {
         success: true,
         data,
+        ...(meta && { meta }),
       },
       { status }
     );
@@ -43,13 +45,15 @@ export class ApiResponseHelper {
   static successWithPagination<T>(
     data: T,
     pagination: ApiResponse['pagination'],
-    status: number = 200
+    status: number = 200,
+    meta?: any
   ): NextResponse<ApiResponse<T>> {
     return NextResponse.json(
       {
         success: true,
         data,
         pagination,
+        ...(meta && { meta }),
       },
       { status }
     );

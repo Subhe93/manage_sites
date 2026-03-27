@@ -43,7 +43,10 @@ export class DomainRepository extends BaseRepository<
         { tld: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
-
+    // Filter by accessible IDs if provided (non-admin users)
+    if (filters.accessibleIds && filters.accessibleIds.length > 0) {
+      where.id = { in: filters.accessibleIds };
+    }
     return this.findMany({
       where,
       skip: (page - 1) * pageSize,
@@ -110,7 +113,10 @@ export class DomainRepository extends BaseRepository<
         { tld: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
-
+    // Filter by accessible IDs if provided (non-admin users)
+    if (filters.accessibleIds && filters.accessibleIds.length > 0) {
+      where.id = { in: filters.accessibleIds };
+    }
     return this.count(where);
   }
 

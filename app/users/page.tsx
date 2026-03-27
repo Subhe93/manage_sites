@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { UsersStats } from '@/components/users/users-stats';
 import { UsersFilters } from '@/components/users/users-filters';
 import { UsersTable } from '@/components/users/users-table';
+import { AdminGate } from '@/components/auth/permission-gate';
 
 export default function UsersPage() {
   const router = useRouter();
@@ -49,35 +50,37 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Users</h1>
-          <p className="text-gray-500 mt-1">Manage system users</p>
+    <AdminGate>
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Users</h1>
+            <p className="text-gray-500 mt-1">Manage system users</p>
+          </div>
+          <Button onClick={() => router.push('/users/new')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add User
+          </Button>
         </div>
-        <Button onClick={() => router.push('/users/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
+
+        {/* Stats */}
+        <UsersStats />
+
+        {/* Filters */}
+        <UsersFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={handleReset}
+        />
+
+        {/* Table */}
+        <UsersTable 
+          filters={filters} 
+          onPageChange={handlePageChange}
+          onSortChange={handleSortChange}
+        />
       </div>
-
-      {/* Stats */}
-      <UsersStats />
-
-      {/* Filters */}
-      <UsersFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onReset={handleReset}
-      />
-
-      {/* Table */}
-      <UsersTable 
-        filters={filters} 
-        onPageChange={handlePageChange}
-        onSortChange={handleSortChange}
-      />
-    </div>
+    </AdminGate>
   );
 }

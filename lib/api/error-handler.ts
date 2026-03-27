@@ -1,6 +1,9 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, EntityType, PermissionLevel } from '@prisma/client';
 import { ApiResponseHelper } from './response';
 import { ZodError } from 'zod';
+import { withRequestContext } from './request-context';
+import { NextRequest } from 'next/server';
+import { getUserFromRequest, canAccess, UserPermissionInfo } from '@/lib/permissions';
 
 /**
  * معالج الأخطاء المركزي
@@ -103,13 +106,46 @@ export class ApiError extends Error {
  * يلتقط الأخطاء تلقائياً ويعالجها
  */
 export function asyncHandler(
-  handler: (req: Request, context?: any) => Promise<Response>
+  handler: (req: any, context?: any) => Promise<Response>
 ) {
-  return async (req: Request, context?: any) => {
-    try {
-      return await handler(req, context);
-    } catch (error) {
-      return ApiErrorHandler.handle(error);
-    }
+  return async (req: any, context?: any) => {
+    return withRequestContext(req as Request, async () => {
+      try {
+        return await handler(req, context);
+      } catch (error) {
+        return ApiErrorHandler.handle(error);
+      }
+    });
+  };
+}
+
+/**
+ * Async handler with permission checking
+ * يلتقط الأخطاء ويتحقق من الصلاحيات تلقائياً
+ */
+interface PermissionOptions {
+  entityType: EntityType | null;
+  level: PermissionLevel;
+}
+
+export function protectedHandler(
+  options: PermissionOptions,
+  handler: (req: NextRequest, context: any, user: UserPermissionInfo) => Promise<Response>
+) {
+  return async (req: NextRequest, context?: any) => {
+    return withRequestContext(req as Request, async () => {
+      try {
+        const user = await getUserFromRequest(req);
+        if (!user) {
+          return ApiResponseHelper.unauthorized('Authentication required');
+        }
+        if (!canAccess(user, options.entityType, options.level)) {
+          return ApiResponseHelper.forbidden('You do not have permission to perform this action');
+        }
+        return await handler(req, context, user);
+      } catch (error) {
+        return ApiErrorHandler.handle(error);
+      }
+    });
   };
 }

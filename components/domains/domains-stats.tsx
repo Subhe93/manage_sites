@@ -46,7 +46,7 @@ export function DomainsStats() {
         </CardContent>
       </Card>
 
-      {Object.entries(stats?.byStatus || {}).map(([status, count]) => {
+      {Object.entries(stats?.byStatus || {}).map(([status, count]: [string, any]) => {
         const config = statusConfig[status] || { label: status, icon: Globe, color: 'text-gray-600' };
         const Icon = config.icon;
         

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
 import {
   Table,
   TableBody,
@@ -38,9 +39,11 @@ import {
   ArrowDown,
   Mail,
   Phone,
+  Clock,
 } from 'lucide-react';
-import { useClients, useClientMutations } from '@/hooks/use-clients';
+import { useClients, useClientMutations, type ClientCost } from '@/hooks/use-clients';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ClientDetailPanel } from './client-detail-panel';
 
 interface ClientsTableProps {
   filters: any;
@@ -48,12 +51,30 @@ interface ClientsTableProps {
   onSortChange: (sortBy: string, sortOrder: 'asc' | 'desc') => void;
 }
 
+function getNextPayment(costs?: ClientCost[]): ClientCost | null {
+  if (!costs || costs.length === 0) return null;
+  const now = new Date();
+  const upcoming = costs
+    .filter((c) => c.nextBillingDate && new Date(c.nextBillingDate) >= now)
+    .sort((a, b) => new Date(a.nextBillingDate!).getTime() - new Date(b.nextBillingDate!).getTime());
+  return upcoming[0] || null;
+}
+
+function getDaysUntil(dateStr: string): number {
+  const now = new Date();
+  const target = new Date(dateStr);
+  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export function ClientsTable({ filters, onPageChange, onSortChange }: ClientsTableProps) {
   const router = useRouter();
   const { clients, loading, pagination, refetch } = useClients(filters);
   const { deleteClient } = useClientMutations();
+  const { canEdit, canAdmin } = useUserPermissions();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const handleSort = (column: string) => {
     const newSortOrder =
@@ -141,6 +162,7 @@ export function ClientsTable({ filters, onPageChange, onSortChange }: ClientsTab
               <SortableHeader column="status">Status</SortableHeader>
               <TableHead>Domains</TableHead>
               <TableHead>Websites</TableHead>
+              <TableHead>Next Payment</TableHead>
               <TableHead>Created By</TableHead>
               <SortableHeader column="createdAt">Created At</SortableHeader>
               <TableHead className="w-[50px]"></TableHead>
@@ -149,13 +171,23 @@ export function ClientsTable({ filters, onPageChange, onSortChange }: ClientsTab
           <TableBody>
             {clients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
                   No clients found
                 </TableCell>
               </TableRow>
             ) : (
-              clients.map((client) => (
-                <TableRow key={client.id}>
+              clients.map((client) => {
+                const nextPay = getNextPayment(client.costs);
+                const daysUntilPay = nextPay?.nextBillingDate ? getDaysUntil(nextPay.nextBillingDate) : null;
+                return (
+                <TableRow
+                  key={client.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => {
+                    setSelectedClientId(client.id);
+                    setPanelOpen(true);
+                  }}
+                >
                   <TableCell className="font-medium">{client.clientName}</TableCell>
                   <TableCell>{client.companyName || '-'}</TableCell>
                   <TableCell>
@@ -194,6 +226,32 @@ export function ClientsTable({ filters, onPageChange, onSortChange }: ClientsTab
                     <Badge variant="secondary">{client._count?.websites || 0}</Badge>
                   </TableCell>
                   <TableCell>
+                    {nextPay && nextPay.nextBillingDate ? (
+                      <div className="flex items-center gap-1.5">
+                        <Clock className={`h-3.5 w-3.5 ${
+                          daysUntilPay !== null && daysUntilPay < 0 ? 'text-red-500' :
+                          daysUntilPay !== null && daysUntilPay <= 7 ? 'text-amber-500' :
+                          'text-muted-foreground'
+                        }`} />
+                        <div>
+                          <p className={`text-xs font-medium ${
+                            daysUntilPay !== null && daysUntilPay < 0 ? 'text-red-600' :
+                            daysUntilPay !== null && daysUntilPay <= 7 ? 'text-amber-600' : ''
+                          }`}>
+                            {new Date(nextPay.nextBillingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {daysUntilPay !== null && daysUntilPay < 0
+                              ? `${Math.abs(daysUntilPay)}d overdue`
+                              : `${daysUntilPay}d left`}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     {client.creator ? (
                       <span className="text-sm">
                         {client.creator.fullName || client.creator.username}
@@ -213,24 +271,29 @@ export function ClientsTable({ filters, onPageChange, onSortChange }: ClientsTab
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/clients/${client.id}/edit`)}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteId(client.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                        {canEdit('clients') && (
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); router.push(`/clients/${client.id}/edit`); }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canAdmin('clients') && (
+                          <DropdownMenuItem
+                            onClick={(e) => { e.stopPropagation(); setDeleteId(client.id); }}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -263,6 +326,15 @@ export function ClientsTable({ filters, onPageChange, onSortChange }: ClientsTab
           </div>
         </div>
       )}
+
+      <ClientDetailPanel
+        clientId={selectedClientId}
+        open={panelOpen}
+        onClose={() => {
+          setPanelOpen(false);
+          setSelectedClientId(null);
+        }}
+      />
 
       <AlertDialog open={deleteId !== null} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>

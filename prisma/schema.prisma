@@ -108,6 +108,15 @@ enum EntityType {
   other
   backup
   ssl
+  providers
+  cloudflare
+  google
+  uptime
+  notifications
+  activity
+  users
+  permissions
+  settings
 }
 
 enum FieldType {
@@ -369,8 +378,30 @@ model Client {
   creator     User?        @relation("ClientCreator", fields: [createdBy], references: [id])
   domains     Domain[]
   websites    Website[]
+  costs       ClientCost[]
 
   @@map("clients")
+}
+
+model ClientCost {
+  id              Int          @id @default(autoincrement())
+  clientId        Int          @map("client_id")
+  costAmount      Float        @map("cost_amount")
+  currency        String       @default("USD")
+  billingCycle    BillingCycle @map("billing_cycle")
+  costType        CostType     @map("cost_type")
+  description     String?
+  startDate       DateTime?    @map("start_date")
+  nextBillingDate DateTime?    @map("next_billing_date")
+  autoRenew       Boolean      @default(true) @map("auto_renew")
+  paymentMethod   String?      @map("payment_method")
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  client          Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_costs")
 }
 
 model ServiceProvider {
@@ -1072,6 +1103,24 @@ model UptimeLog {
   uptimeCheck    UptimeCheck  @relation(fields: [uptimeCheckId], references: [id], onDelete: Cascade)
 
   @@map("uptime_logs")
+}
+
+model UptimeMonitorSettings {
+  id                      Int      @id @default(autoincrement())
+  isEnabled               Boolean  @default(false) @map("is_enabled")
+  checkIntervalMinutes    Int      @default(5) @map("check_interval_minutes")
+  enableNotifications     Boolean  @default(true) @map("enable_notifications")
+  notifyOnDown            Boolean  @default(true) @map("notify_on_down")
+  notifyOnRecovery        Boolean  @default(true) @map("notify_on_recovery")
+  notifyOnDegraded        Boolean  @default(false) @map("notify_on_degraded")
+  notificationEmails      String?  @map("notification_emails")
+  consecutiveFailsBeforeAlert Int  @default(2) @map("consecutive_fails_before_alert")
+  timeoutSeconds          Int      @default(10) @map("timeout_seconds")
+  maxConcurrentChecks     Int      @default(5) @map("max_concurrent_checks")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("uptime_monitor_settings")
 }
 
 model ApiKey {

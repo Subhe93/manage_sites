@@ -70,6 +70,7 @@ const websiteSchema = z.object({
     adminPassword: z.string().optional(),
     notes: z.string().optional(),
   })).optional(),
+  customFieldValues: z.record(z.any()).optional(),
 });
 
 type WebsiteFormData = z.infer<typeof websiteSchema>;
@@ -130,6 +131,15 @@ export function WebsiteForm({ website, mode }: WebsiteFormProps) {
   const { items: googleSearchConsoleAccounts } = useGoogleSearchConsoleAccounts();
   const { items: googleTagManagerAccounts } = useGoogleTagManagerAccounts();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customFieldsDef, setCustomFieldsDef] = useState<any[]>([]);
+
+  // Fetch active custom fields
+  useState(() => {
+    fetch('/api/settings/custom-fields?entityType=website&activeOnly=true')
+      .then(r => r.json())
+      .then(d => { if (d.success) setCustomFieldsDef(d.data); })
+      .catch(e => console.error('Failed to load custom fields', e));
+  });
 
   const {
     register,
@@ -175,12 +185,19 @@ export function WebsiteForm({ website, mode }: WebsiteFormProps) {
             adminPassword: s.adminPassword || '',
             notes: s.notes || '',
           })) || [],
+          customFieldValues: website.customFieldValues?.reduce((acc: any, cfv: any) => {
+            if (cfv.fieldDefinition) {
+              acc[cfv.fieldDefinitionId] = cfv.fieldValue;
+            }
+            return acc;
+          }, {}) || {},
         }
       : {
           status: 'active',
           environment: 'production',
           websiteType: 'wordpress',
           subdomains: [],
+          customFieldValues: {},
         },
   });
 
@@ -225,9 +242,9 @@ export function WebsiteForm({ website, mode }: WebsiteFormProps) {
       };
 
       if (mode === 'create') {
-        await createWebsite(submitData);
+        await createWebsite(submitData as any);
       } else if (website) {
-        await updateWebsite(website.id, submitData);
+        await updateWebsite(website.id, submitData as any);
       }
 
       router.push('/websites');
@@ -665,7 +682,7 @@ export function WebsiteForm({ website, mode }: WebsiteFormProps) {
                             {...register(`subdomains.${index}.subdomainName`)}
                           />
                           {errors.subdomains?.[index]?.subdomainName && (
-                            <p className="text-sm text-red-600">{errors.subdomains[index].subdomainName.message}</p>
+                            <p className="text-sm text-red-600">{errors.subdomains?.[index]?.subdomainName?.message}</p>
                           )}
                         </div>
 
@@ -741,6 +758,69 @@ export function WebsiteForm({ website, mode }: WebsiteFormProps) {
                 </div>
               )}
             </div>
+
+            {/* Custom Fields Section */}
+            {customFieldsDef.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium border-b pb-2 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Custom Fields
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {customFieldsDef.map(cf => (
+                    <div key={cf.id} className="space-y-2">
+                      <Label htmlFor={`cf_${cf.id}`}>
+                        {cf.fieldLabel} {cf.isRequired && '*'}
+                      </Label>
+                      {cf.fieldType === 'select' ? (
+                        <Select
+                          value={watch(`customFieldValues.${cf.id}`) || cf.defaultValue || 'none'}
+                          onValueChange={(value) =>
+                            setValue(`customFieldValues.${cf.id}`, value === 'none' ? '' : value)
+                          }
+                        >
+                          <SelectTrigger id={`cf_${cf.id}`}>
+                            <SelectValue placeholder={`Select ${cf.fieldLabel}`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {cf.fieldOptions?.split(',').map((opt: string) => opt.trim()).map((opt: string) => (
+                              <SelectItem key={opt} value={opt}>
+                                {opt}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : cf.fieldType === 'checkbox' ? (
+                        <Select
+                          value={watch(`customFieldValues.${cf.id}`) || cf.defaultValue || 'none'}
+                          onValueChange={(value) =>
+                            setValue(`customFieldValues.${cf.id}`, value === 'none' ? '' : value)
+                          }
+                        >
+                          <SelectTrigger id={`cf_${cf.id}`}>
+                            <SelectValue placeholder={`Select Yes/No`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            <SelectItem value="Yes">Yes</SelectItem>
+                            <SelectItem value="No">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          id={`cf_${cf.id}`}
+                          type={cf.fieldType === 'number' ? 'number' : cf.fieldType === 'date' ? 'date' : 'text'}
+                          placeholder={`Enter ${cf.fieldLabel}`}
+                          {...register(`customFieldValues.${cf.id}`)}
+                          defaultValue={cf.defaultValue || ''}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Section 6: Additional Info */}
             <div className="space-y-4">

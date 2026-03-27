@@ -4,6 +4,7 @@ import { ApiResponseHelper } from '@/lib/api/response';
 import { asyncHandler } from '@/lib/api/error-handler';
 import { z } from 'zod';
 import { ClientStatus } from '@prisma/client';
+import { getUserFromRequest, canAccess, canAccessEntity } from '@/lib/permissions';
 
 /**
  * GET /api/clients/[id]
@@ -11,6 +12,15 @@ import { ClientStatus } from '@prisma/client';
  */
 export const GET = asyncHandler(
   async (req: NextRequest, { params }: { params: { id: string } }) => {
+    // ✅ فحص الصلاحيات
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return ApiResponseHelper.unauthorized('Not authenticated');
+    }
+    if (!canAccess(user, 'client', 'view')) {
+      return ApiResponseHelper.unauthorized('Access denied to clients');
+    }
+
     const id = parseInt(params.id);
 
     if (isNaN(id)) {
@@ -21,6 +31,11 @@ export const GET = asyncHandler(
 
     if (!client) {
       return ApiResponseHelper.notFound('Client not found');
+    }
+
+    // ✅ فحص صلاحيات الكائن الفردي
+    if (!canAccessEntity(user, 'client', id, 'view')) {
+      return ApiResponseHelper.unauthorized('Access denied to this client');
     }
 
     return ApiResponseHelper.success(client);
@@ -44,19 +59,33 @@ const updateClientSchema = z.object({
 
 export const PUT = asyncHandler(
   async (req: NextRequest, { params }: { params: { id: string } }) => {
+    // ✅ فحص الصلاحيات
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return ApiResponseHelper.unauthorized('Not authenticated');
+    }
+    if (!canAccess(user, 'client', 'edit')) {
+      return ApiResponseHelper.unauthorized('Permission denied - edit access required');
+    }
+
     const id = parseInt(params.id);
 
     if (isNaN(id)) {
       return ApiResponseHelper.error('Invalid client ID', 400);
     }
 
-    const body = await req.json();
-    const validatedData = updateClientSchema.parse(body);
-
     const existing = await clientRepository.findById(id);
     if (!existing) {
       return ApiResponseHelper.notFound('Client not found');
     }
+
+    // ✅ فحص صلاحيات الكائن الفردي
+    if (!canAccessEntity(user, 'client', id, 'edit')) {
+      return ApiResponseHelper.unauthorized('Access denied to edit this client');
+    }
+
+    const body = await req.json();
+    const validatedData = updateClientSchema.parse(body);
 
     const client = await clientRepository.update(id, validatedData);
 
@@ -70,6 +99,15 @@ export const PUT = asyncHandler(
  */
 export const DELETE = asyncHandler(
   async (req: NextRequest, { params }: { params: { id: string } }) => {
+    // ✅ فحص الصلاحيات
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return ApiResponseHelper.unauthorized('Not authenticated');
+    }
+    if (!canAccess(user, 'client', 'admin')) {
+      return ApiResponseHelper.unauthorized('Permission denied - admin access required');
+    }
+
     const id = parseInt(params.id);
 
     if (isNaN(id)) {
@@ -79,6 +117,11 @@ export const DELETE = asyncHandler(
     const existing = await clientRepository.findById(id);
     if (!existing) {
       return ApiResponseHelper.notFound('Client not found');
+    }
+
+    // ✅ فحص صلاحيات الكائن الفردي
+    if (!canAccessEntity(user, 'client', id, 'admin')) {
+      return ApiResponseHelper.unauthorized('Access denied to delete this client');
     }
 
     await clientRepository.delete(id);

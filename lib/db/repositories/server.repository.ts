@@ -102,7 +102,10 @@ export class ServerRepository extends BaseRepository<
         { location: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
-
+    // Filter by accessible IDs if provided (non-admin users)
+    if (filters.accessibleIds && filters.accessibleIds.length > 0) {
+      where.id = { in: filters.accessibleIds };
+    }
     return this.count(where);
   }
 

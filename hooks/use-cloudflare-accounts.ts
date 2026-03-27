@@ -11,6 +11,7 @@ export interface CloudflareAccount {
     updatedAt: string;
     _count?: {
         domains: number;
+        linkedDomains: number;
     };
     domains?: any[];
 }

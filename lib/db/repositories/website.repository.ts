@@ -39,6 +39,15 @@ export class WebsiteRepository extends BaseRepository<
           },
         },
         subdomains: true,
+        customFieldValues: {
+          include: {
+            fieldDefinition: true,
+          },
+        },
+        googleAnalyticsAccount: true,
+        googleSearchConsoleAccount: true,
+        googleAdsAccount: true,
+        googleTagManagerAccount: true,
       },
     });
   }

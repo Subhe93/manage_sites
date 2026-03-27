@@ -675,7 +675,7 @@ export function ServerForm({ server, mode }: ServerFormProps) {
                       <CostForm
                         key={cost.id}
                         cost={cost}
-                        onSave={(data) => handleUpdateCost(cost.id, data)}
+                        onSave={(data) => handleUpdateCost(cost.id!, data)}
                         onCancel={() => setEditingCostId(null)}
                         saving={savingCost}
                       />
@@ -721,7 +721,7 @@ export function ServerForm({ server, mode }: ServerFormProps) {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => {
-                              setEditingCostId(cost.id);
+                              setEditingCostId(cost.id!);
                               setShowAddForm(false);
                             }}
                           >
@@ -732,7 +732,7 @@ export function ServerForm({ server, mode }: ServerFormProps) {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => setDeleteCostId(cost.id)}
+                            onClick={() => setDeleteCostId(cost.id!)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>

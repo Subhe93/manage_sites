@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
 import {
   Table,
   TableBody,
@@ -52,6 +53,7 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
   const router = useRouter();
   const { websites, loading, pagination, refetch } = useWebsites(filters);
   const { deleteWebsite } = useWebsiteMutations();
+  const { canEdit, canAdmin } = useUserPermissions();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<number | null>(null);
@@ -250,25 +252,29 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/websites/${website.id}/edit`);
-                          }}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteId(website.id);
-                          }}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                        {canEdit('websites') && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/websites/${website.id}/edit`);
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canAdmin('websites') && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteId(website.id);
+                            }}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

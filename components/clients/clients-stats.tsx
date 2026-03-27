@@ -44,7 +44,7 @@ export function ClientsStats() {
         </CardContent>
       </Card>
 
-      {Object.entries(stats?.byStatus || {}).map(([status, count]) => {
+      {Object.entries(stats?.byStatus || {}).map(([status, count]: [string, any]) => {
         const config = statusConfig[status] || { label: status, icon: Users, color: 'text-gray-600' };
         const Icon = config.icon;
         

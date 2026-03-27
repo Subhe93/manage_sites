@@ -84,6 +84,16 @@ export interface Website {
     adminPassword: string | null;
     notes: string | null;
   }[];
+  customFieldValues?: {
+    id: number;
+    fieldDefinitionId: number;
+    fieldValue: string;
+    fieldDefinition: {
+      fieldName: string;
+      fieldLabel: string;
+      fieldType: string;
+    }
+  }[];
 }
 
 export interface WebsiteFilters {

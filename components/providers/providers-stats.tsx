@@ -54,7 +54,7 @@ export function ProvidersStats() {
         </CardContent>
       </Card>
 
-      {Object.entries(stats?.byType || {}).map(([type, count]) => {
+      {Object.entries(stats?.byType || {}).map(([type, count]: [string, any]) => {
         const Icon = typeIcons[type] || Package;
         return (
           <Card key={type}>

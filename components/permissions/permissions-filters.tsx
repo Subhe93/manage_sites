@@ -67,11 +67,19 @@ export function PermissionsFilters({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Types</SelectItem>
-          <SelectItem value="client">Client</SelectItem>
-          <SelectItem value="domain">Domain</SelectItem>
-          <SelectItem value="server">Server</SelectItem>
-          <SelectItem value="website">Website</SelectItem>
-          <SelectItem value="project">Project</SelectItem>
+          <SelectItem value="client">Clients</SelectItem>
+          <SelectItem value="domain">Domains</SelectItem>
+          <SelectItem value="server">Servers</SelectItem>
+          <SelectItem value="website">Websites</SelectItem>
+          <SelectItem value="providers">Service Providers</SelectItem>
+          <SelectItem value="cloudflare">Cloudflare</SelectItem>
+          <SelectItem value="google">Google Services</SelectItem>
+          <SelectItem value="uptime">Uptime Monitor</SelectItem>
+          <SelectItem value="notifications">Notifications</SelectItem>
+          <SelectItem value="activity">Activity Log</SelectItem>
+          <SelectItem value="users">Users</SelectItem>
+          <SelectItem value="permissions">Permissions</SelectItem>
+          <SelectItem value="settings">Settings</SelectItem>
         </SelectContent>
       </Select>
 

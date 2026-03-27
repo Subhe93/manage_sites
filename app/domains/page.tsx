@@ -8,6 +8,7 @@ import { DomainsStats } from '@/components/domains/domains-stats';
 import { DomainsFilters } from '@/components/domains/domains-filters';
 import { DomainsTable } from '@/components/domains/domains-table';
 import { DomainDetailPanel } from '@/components/domains/domain-detail-panel';
+import { PermissionGate } from '@/components/auth/permission-gate';
 
 export default function DomainsPage() {
   const router = useRouter();
@@ -53,36 +54,39 @@ export default function DomainsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Domains</h1>
-          <p className="text-gray-500 mt-1">Manage your domain portfolio</p>
+    <PermissionGate section="domains" level="view">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Domains</h1>
+            <p className="text-gray-500 mt-1">Manage your domain portfolio</p>
+          </div>
+          <PermissionGate section="domains" level="edit">
+            <Button onClick={() => router.push('/domains/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Domain
+            </Button>
+          </PermissionGate>
         </div>
-        <Button onClick={() => router.push('/domains/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Domain
-        </Button>
-      </div>
 
-      {/* Stats */}
-      <DomainsStats />
+        {/* Stats */}
+        <DomainsStats />
 
-      {/* Filters */}
-      <DomainsFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onReset={handleReset}
-      />
+        {/* Filters */}
+        <DomainsFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={handleReset}
+        />
 
-      {/* Table */}
-      <DomainsTable
-        filters={filters}
-        onPageChange={handlePageChange}
-        onSortChange={handleSortChange}
-        onViewDomain={(id) => setSelectedDomainId(id)}
-      />
+        {/* Table */}
+        <DomainsTable
+          filters={filters}
+          onPageChange={handlePageChange}
+          onSortChange={handleSortChange}
+          onViewDomain={(id) => setSelectedDomainId(id)}
+        />
 
       {/* Detail Panel */}
       {selectedDomainId && (
@@ -97,6 +101,7 @@ export default function DomainsPage() {
           />
         </>
       )}
-    </div>
+      </div>
+    </PermissionGate>
   );
 }

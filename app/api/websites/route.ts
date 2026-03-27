@@ -3,12 +3,22 @@ import { websiteRepository } from '@/lib/db/repositories';
 import { ApiResponseHelper } from '@/lib/api/response';
 import { asyncHandler } from '@/lib/api/error-handler';
 import { z } from 'zod';
+import { getUserFromRequest, canAccess } from '@/lib/permissions';
+import prisma from '@/lib/prisma';
 
 /**
  * GET /api/websites
  * جلب جميع المواقع مع pagination وفلاتر
  */
 export const GET = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'website', 'view')) {
+    return ApiResponseHelper.unauthorized('Access denied to websites');
+  }
   const searchParams = req.nextUrl.searchParams;
   const page = parseInt(searchParams.get('page') || '1');
   const pageSize = parseInt(searchParams.get('pageSize') || '10');
@@ -40,6 +50,25 @@ export const GET = asyncHandler(async (req: NextRequest) => {
       { websiteUrl: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
     ];
+  }
+
+  // 🔐 For non-admin users, only return accessible websites
+  if (!['super_admin', 'admin'].includes(user.role)) {
+    const userWebsitePermissions = await prisma.userPermission.findMany({
+      where: {
+        userId: user.userId,
+        entityType: 'website',
+      },
+      select: { entityId: true },
+    });
+
+    const accessibleWebsiteIds = userWebsitePermissions
+      .filter(p => p.entityId !== null)
+      .map(p => p.entityId as number);
+
+    if (accessibleWebsiteIds.length > 0) {
+      where.id = { in: accessibleWebsiteIds };
+    }
   }
 
   const orderBy: any = {};
@@ -145,9 +174,18 @@ const createWebsiteSchema = z.object({
   status: z.enum(['active', 'maintenance', 'suspended', 'archived']),
   description: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  customFieldValues: z.record(z.any()).optional(),
 });
 
 export const POST = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'website', 'edit')) {
+    return ApiResponseHelper.unauthorized('Permission denied - edit access required');
+  }
   const body = await req.json();
   const validatedData = createWebsiteSchema.parse(body);
 
@@ -204,6 +242,19 @@ export const POST = asyncHandler(async (req: NextRequest) => {
         accessUrl: validatedData.adminUrl || undefined,
       }],
     };
+  }
+
+  if (validatedData.customFieldValues) {
+    const cfvs = Object.entries(validatedData.customFieldValues)
+      .filter(([_, val]) => val !== undefined && val !== null && val !== '')
+      .map(([id, val]) => ({
+        fieldDefinitionId: parseInt(id),
+        fieldValue: String(val),
+        entityType: 'website'
+      }));
+    if (cfvs.length > 0) {
+      websiteData.customFieldValues = { create: cfvs };
+    }
   }
 
   const website = await websiteRepository.create(websiteData);

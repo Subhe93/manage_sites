@@ -68,7 +68,7 @@ export function usePermissions(filters: PermissionFilters = {}) {
       if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
 
       const response = await ApiClient.get(`/permissions?${params.toString()}`);
-      setPermissions(response.data?.permissions || []);
+      setPermissions((response.data as any)?.permissions || []);
       setPagination(response.pagination || {
         page: 1,
         pageSize: 10,

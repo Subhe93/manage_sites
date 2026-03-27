@@ -6,6 +6,7 @@ export interface ClientFilters {
   status?: ClientStatus;
   country?: string;
   search?: string;
+  accessibleIds?: number[];
 }
 
 export class ClientRepository extends BaseRepository<
@@ -41,6 +42,11 @@ export class ClientRepository extends BaseRepository<
       ];
     }
 
+    // Filter by accessible IDs if provided (non-admin users)
+    if (filters.accessibleIds && filters.accessibleIds.length > 0) {
+      where.id = { in: filters.accessibleIds };
+    }
+
     return this.findMany({
       where,
       skip: (page - 1) * pageSize,
@@ -52,6 +58,9 @@ export class ClientRepository extends BaseRepository<
             username: true,
             fullName: true,
           },
+        },
+        costs: {
+          orderBy: { nextBillingDate: 'asc' },
         },
         _count: {
           select: {
@@ -84,6 +93,11 @@ export class ClientRepository extends BaseRepository<
       ];
     }
 
+    // Filter by accessible IDs if provided (non-admin users)
+    if (filters.accessibleIds && filters.accessibleIds.length > 0) {
+      where.id = { in: filters.accessibleIds };
+    }
+
     return this.count(where);
   }
 
@@ -105,11 +119,20 @@ export class ClientRepository extends BaseRepository<
             costs: true,
           },
         },
+        costs: {
+          orderBy: { nextBillingDate: 'asc' },
+        },
         creator: {
           select: {
             id: true,
             username: true,
             fullName: true,
+          },
+        },
+        _count: {
+          select: {
+            domains: true,
+            websites: true,
           },
         },
       },

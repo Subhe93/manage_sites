@@ -4,12 +4,22 @@ import { ApiResponseHelper } from '@/lib/api/response';
 import { asyncHandler } from '@/lib/api/error-handler';
 import { z } from 'zod';
 import { ServerType, ServerStatus, ControlPanel, BillingCycle } from '@prisma/client';
+import { getUserFromRequest, canAccess } from '@/lib/permissions';
+import prisma from '@/lib/prisma';
 
 /**
  * GET /api/servers
  * جلب جميع الخوادم مع pagination وفلاتر
  */
 export const GET = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'server', 'view')) {
+    return ApiResponseHelper.unauthorized('Access denied to servers');
+  }
   const searchParams = req.nextUrl.searchParams;
   const page = parseInt(searchParams.get('page') || '1');
   const pageSize = parseInt(searchParams.get('pageSize') || '10');
@@ -40,6 +50,25 @@ export const GET = asyncHandler(async (req: NextRequest) => {
 
   const orderBy: any = {};
   orderBy[sortBy] = sortOrder;
+
+  // 🔐 For non-admin users, only return accessible servers
+  if (!['super_admin', 'admin'].includes(user.role)) {
+    const userServerPermissions = await prisma.userPermission.findMany({
+      where: {
+        userId: user.userId,
+        entityType: 'server',
+      },
+      select: { entityId: true },
+    });
+
+    const accessibleServerIds = userServerPermissions
+      .filter(p => p.entityId !== null)
+      .map(p => p.entityId as number);
+
+    if (accessibleServerIds.length > 0) {
+      filters.accessibleIds = accessibleServerIds;
+    }
+  }
 
   const [servers, total] = await Promise.all([
     serverRepository.findAllWithFilters(filters, page, pageSize, orderBy),
@@ -91,6 +120,15 @@ const createServerSchema = z.object({
 });
 
 export const POST = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'server', 'edit')) {
+    return ApiResponseHelper.unauthorized('Permission denied - edit access required');
+  }
+
   const body = await req.json();
   const validatedData = createServerSchema.parse(body);
 

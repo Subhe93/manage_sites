@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
 import {
   Table,
   TableBody,
@@ -78,6 +79,7 @@ export function DomainsTable({ filters, onPageChange, onSortChange, onViewDomain
   const router = useRouter();
   const { domains, loading, pagination, refetch } = useDomains(filters);
   const { deleteDomain } = useDomainMutations();
+  const { canEdit, canAdmin } = useUserPermissions();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -245,17 +247,21 @@ export function DomainsTable({ filters, onPageChange, onSortChange, onViewDomain
                           <DropdownMenuItem onClick={() => onViewDomain(domain.id)}>
                             <Eye className="h-4 w-4 mr-2" /> View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/domains/${domain.id}/edit`)}
-                          >
-                            <Pencil className="h-4 w-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setDeleteId(domain.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
-                          </DropdownMenuItem>
+                          {canEdit('domains') && (
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/domains/${domain.id}/edit`)}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                          )}
+                          {canAdmin('domains') && (
+                            <DropdownMenuItem
+                              onClick={() => setDeleteId(domain.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

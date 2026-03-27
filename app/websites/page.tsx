@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { WebsitesStats } from '@/components/websites/websites-stats';
 import { WebsitesFilters } from '@/components/websites/websites-filters';
 import { WebsitesTable } from '@/components/websites/websites-table';
+import { PermissionGate } from '@/components/auth/permission-gate';
 
 export default function WebsitesPage() {
   const router = useRouter();
@@ -51,33 +52,42 @@ export default function WebsitesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Websites</h1>
-          <p className="text-gray-500 mt-1">
-            Manage all hosted websites and applications
-          </p>
+    <PermissionGate section="websites" level="view">
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Websites</h1>
+            <p className="text-gray-500 mt-1">
+              Manage all hosted websites and applications
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => router.push('/settings/custom-fields')}>
+              Custom Fields
+            </Button>
+            <PermissionGate section="websites" level="edit">
+              <Button onClick={() => router.push('/websites/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Website
+              </Button>
+            </PermissionGate>
+          </div>
         </div>
-        <Button onClick={() => router.push('/websites/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Website
-        </Button>
+
+        <WebsitesStats />
+
+        <WebsitesFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={handleReset}
+        />
+
+        <WebsitesTable
+          filters={filters}
+          onPageChange={handlePageChange}
+          onSortChange={handleSortChange}
+        />
       </div>
-
-      <WebsitesStats />
-
-      <WebsitesFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onReset={handleReset}
-      />
-
-      <WebsitesTable
-        filters={filters}
-        onPageChange={handlePageChange}
-        onSortChange={handleSortChange}
-      />
-    </div>
+    </PermissionGate>
   );
 }

@@ -2,8 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mockDomains, mockClients } from '@/lib/mock-data';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Globe, ExternalLink } from 'lucide-react';
+import type { DomainExpiry } from '@/hooks/use-dashboard';
+
+interface DomainExpiryTableProps {
+  domains: DomainExpiry[];
+  loading: boolean;
+}
 
 const statusColors: Record<string, string> = {
   active: 'bg-[hsl(162,63%,41%)]/10 text-[hsl(162,63%,41%)] border-[hsl(162,63%,41%)]/20',
@@ -25,11 +31,7 @@ function getExpiryBadge(days: number) {
   return <Badge className="text-[10px] bg-[hsl(162,63%,41%)]/10 text-[hsl(162,63%,41%)] border-[hsl(162,63%,41%)]/20" variant="outline">{days}d left</Badge>;
 }
 
-export function DomainExpiryTable() {
-  const sortedDomains = [...mockDomains].sort((a, b) => {
-    return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
-  });
-
+export function DomainExpiryTable({ domains, loading }: DomainExpiryTableProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -39,59 +41,69 @@ export function DomainExpiryTable() {
             Domain Expiry Tracker
           </CardTitle>
           <Badge variant="secondary" className="text-[10px]">
-            {mockDomains.length} domains
+            {domains.length} domains
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-t bg-muted/30">
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Domain</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Client</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Expiry</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Remaining</th>
-                <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">Auto-Renew</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {sortedDomains.map((domain) => {
-                const client = mockClients.find(c => c.id === domain.client_id);
-                const daysLeft = getDaysUntilExpiry(domain.expiry_date);
+        {loading ? (
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : domains.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No domains found</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-t bg-muted/30">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Domain</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Client</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Status</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Expiry</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-muted-foreground">Remaining</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-medium text-muted-foreground">Auto-Renew</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {domains.map((domain) => {
+                  const daysLeft = domain.expiryDate ? getDaysUntilExpiry(domain.expiryDate) : null;
 
-                return (
-                  <tr key={domain.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{domain.domain_name}</span>
-                        <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100" />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {client?.client_name || '-'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline" className={`text-[10px] ${statusColors[domain.status] || ''}`}>
-                        {domain.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {domain.expiry_date}
-                    </td>
-                    <td className="px-4 py-3">
-                      {getExpiryBadge(daysLeft)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-block h-2 w-2 rounded-full ${domain.auto_renew ? 'bg-[hsl(162,63%,41%)]' : 'bg-muted-foreground/30'}`} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr key={domain.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{domain.domainName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {domain.client?.clientName || '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className={`text-[10px] ${statusColors[domain.status] || ''}`}>
+                          {domain.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {domain.expiryDate
+                          ? new Date(domain.expiryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                          : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {daysLeft !== null ? getExpiryBadge(daysLeft) : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-block h-2 w-2 rounded-full ${domain.autoRenew ? 'bg-[hsl(162,63%,41%)]' : 'bg-muted-foreground/30'}`} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

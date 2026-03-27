@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
 import {
   Table,
   TableBody,
@@ -51,6 +52,7 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
   const router = useRouter();
   const { servers, loading, pagination, refetch } = useServers(filters);
   const { deleteServer } = useServerMutations();
+  const { canEdit, canAdmin } = useUserPermissions();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -283,19 +285,23 @@ export function ServersTable({ filters, onPageChange, onSortChange }: ServersTab
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/servers/${server.id}/edit`)}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteId(server.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                        {canEdit('servers') && (
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/servers/${server.id}/edit`)}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canAdmin('servers') && (
+                          <DropdownMenuItem
+                            onClick={() => setDeleteId(server.id)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

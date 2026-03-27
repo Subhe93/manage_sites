@@ -1,6 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 
+export interface ClientCost {
+  id: number;
+  clientId: number;
+  costAmount: number;
+  currency: string;
+  billingCycle: string;
+  costType: string;
+  description: string | null;
+  startDate: string | null;
+  nextBillingDate: string | null;
+  autoRenew: boolean;
+  paymentMethod: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Client {
   id: number;
   clientName: string;
@@ -19,6 +36,7 @@ export interface Client {
     username: string;
     fullName: string | null;
   };
+  costs?: ClientCost[];
   _count?: {
     domains: number;
     websites: number;

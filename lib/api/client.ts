@@ -6,20 +6,48 @@
 export class ApiClient {
   private static baseUrl = '/api';
 
+  private static resolveCurrentUserId(): string | null {
+    if (typeof window === 'undefined') return null;
+
+    const directKeys = ['currentUserId', 'userId', 'activeUserId'];
+    for (const key of directKeys) {
+      const value = window.localStorage.getItem(key);
+      if (value && !Number.isNaN(parseInt(value, 10))) {
+        return value;
+      }
+    }
+
+    const currentUserRaw = window.localStorage.getItem('currentUser');
+    if (currentUserRaw) {
+      try {
+        const parsed = JSON.parse(currentUserRaw);
+        if (parsed?.id && !Number.isNaN(parseInt(String(parsed.id), 10))) {
+          return String(parsed.id);
+        }
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
   /**
    * دالة عامة للطلبات
    */
   private static async request<T>(
     endpoint: string,
     options?: RequestInit
-  ): Promise<{ success: boolean; data?: T; error?: any; pagination?: any }> {
+  ): Promise<{ success: boolean; data?: T; error?: any; pagination?: any; meta?: any }> {
     const url = `${this.baseUrl}${endpoint}`;
 
     try {
+      const actorUserId = this.resolveCurrentUserId();
       const response = await fetch(url, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
+          ...(actorUserId ? { 'x-user-id': actorUserId } : {}),
           ...options?.headers,
         },
       });
@@ -284,5 +312,23 @@ export class NotificationsApi {
 
   static async getUnreadCount() {
     return ApiClient.get('/notifications/unread-count');
+  }
+}
+
+/**
+ * Activity Logs API Client
+ */
+export class ActivityLogsApi {
+  static async getAll(params?: {
+    page?: number;
+    pageSize?: number;
+    actionType?: string;
+    entityType?: string;
+    userId?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) {
+    return ApiClient.get('/activity', params);
   }
 }

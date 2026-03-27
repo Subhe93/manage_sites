@@ -140,10 +140,12 @@ export function WebsiteDetailsSheet({ websiteId, onClose }: WebsiteDetailsSheetP
               </h3>
               <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
                 <div className="col-span-2">
-                  <p className="text-muted-foreground mb-1">Server Account</p>
+                  <p className="text-muted-foreground mb-1">Server & Account</p>
                   <p className="font-medium">
                     {website.serverAccount
                       ? `${website.serverAccount.username} @ ${website.serverAccount.server?.serverName || '-'}`
+                      : website.server
+                      ? website.server.serverName
                       : '-'}
                   </p>
                 </div>
@@ -298,6 +300,28 @@ export function WebsiteDetailsSheet({ websiteId, onClose }: WebsiteDetailsSheetP
                           </div>
                         )}
                       </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Custom Fields */}
+            {website.customFieldValues && website.customFieldValues.length > 0 && (
+              <div className="space-y-4 rounded-lg border p-4 shadow-sm bg-card">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4 border-b pb-2">
+                  <FileText className="h-4 w-4" />
+                  Custom Fields
+                </h3>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                  {website.customFieldValues.map((cf: any) => (
+                    <div key={cf.id || cf.fieldDefinitionId}>
+                      <p className="text-muted-foreground mb-1">{cf.fieldDefinition?.fieldLabel || 'Custom Field'}</p>
+                      <p className="font-medium">
+                        {cf.fieldDefinition?.fieldType === 'checkbox'
+                          ? (cf.fieldValue === 'Yes' ? 'Yes' : 'No')
+                          : cf.fieldValue || '-'}
+                      </p>
                     </div>
                   ))}
                 </div>

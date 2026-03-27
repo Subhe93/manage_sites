@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useUserPermissions } from '@/hooks/use-user-permissions';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Globe, Server, Monitor, Users, Building2, Cloud, ChartBar as BarChart3, Search, Bell, Activity, Settings, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft, UserCog, Lock } from 'lucide-react';
+import { LayoutDashboard, Globe, Server, Monitor, Users, Building2, Cloud, ChartBar as BarChart3, Search, Bell, Activity, Settings, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft, UserCog, Lock, LogOut } from 'lucide-react';
 
 interface NavItem {
   label: string;
@@ -45,13 +46,48 @@ const navigation: NavItem[] = [
   { label: 'Activity Log', href: '/activity', icon: Search },
   { label: 'Users', href: '/users', icon: UserCog },
   { label: 'Permissions', href: '/permissions', icon: Lock },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  {
+    label: 'Settings',
+    href: '/settings',
+    icon: Settings,
+    children: [
+      { label: 'General', href: '/settings' },
+      { label: 'Custom Fields', href: '/settings/custom-fields' },
+      { label: 'Uptime Monitor', href: '/settings/uptime-monitor' },
+    ],
+  },
 ];
+
+interface AuthUser {
+  id: number;
+  username: string;
+  email: string;
+  fullName: string | null;
+  role: string;
+}
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const { canViewSection, isAdmin } = useUserPermissions();
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setUser(data.data.user);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  };
 
   const toggleExpand = (label: string) => {
     setExpandedItems(prev =>
@@ -75,6 +111,41 @@ export function Sidebar() {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   };
+
+  // 🔐 Filter navigation items based on user permissions
+  const filteredNavigation = navigation.filter((item) => {
+    // Always show Dashboard, Overview, Settings
+    if (['/', '/overview', '/settings'].some(path => item.href === path)) {
+      return true;
+    }
+
+    // Map sections to permission entities
+    const sectionMap: Record<string, string> = {
+      '/clients': 'clients',
+      '/domains': 'domains',
+      '/servers': 'servers',
+      '/websites': 'websites',
+      '/providers': 'providers',
+      '/cloudflare': 'cloudflare',
+      '/google': 'google',
+      '/uptime': 'uptime',
+      '/notifications': 'notifications',
+      '/activity': 'activity',
+    };
+
+    // Show admin-only sections only to admins
+    if (['/users', '/permissions'].some(path => item.href === path)) {
+      return isAdmin;
+    }
+
+    // Check if section is allowed
+    const section = sectionMap[item.href];
+    if (section) {
+      return canViewSection(section);
+    }
+
+    return true;
+  });
 
   return (
     <aside
@@ -112,7 +183,7 @@ export function Sidebar() {
 
       <nav className="flex-1 overflow-y-auto scrollbar-thin py-3 px-2.5">
         <div className="space-y-0.5">
-          {navigation.map((item) => {
+          {filteredNavigation.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
             const isExpanded = expandedItems.includes(item.label);
@@ -179,19 +250,32 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {!collapsed && (
-        <div className="border-t border-[hsl(var(--sidebar-border))] p-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[hsl(var(--sidebar-accent))] text-xs font-medium text-white">
-              AA
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-white truncate">Ahmed Ali</p>
-              <p className="text-[10px] opacity-60 truncate">Super Admin</p>
-            </div>
-          </div>
+      <div className="border-t border-[hsl(var(--sidebar-border))] p-3">
+        <div className="flex items-center gap-2.5">
+          {!collapsed && user && (
+            <>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[hsl(var(--sidebar-accent))] text-xs font-medium text-white shrink-0">
+                {(user.fullName || user.username).slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-white truncate">{user.fullName || user.username}</p>
+                <p className="text-[10px] opacity-60 truncate">{user.role.replace('_', ' ')}</p>
+              </div>
+            </>
+          )}
+          <button
+            onClick={handleLogout}
+            title="Logout"
+            className={cn(
+              'flex items-center justify-center rounded-lg p-2 transition-colors',
+              'hover:bg-destructive/20 text-[hsl(var(--sidebar-foreground))] hover:text-destructive',
+              collapsed && 'mx-auto'
+            )}
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
-      )}
+      </div>
     </aside>
   );
 }

@@ -58,9 +58,9 @@ npm run prisma:studio
 بعد تشغيل seed، سيتم إنشاء:
 
 ### المستخدمين
-- **Super Admin**: `superadmin@example.com` / `password123`
-- **Admin**: `admin@example.com` / `password123`
-- **Developer**: `developer@example.com` / `password123`
+- **Super Admin**: `superadmin@iwings.io` / `Adminpassword123`
+- **Admin**: `admin@iwings.io` / `Adminpassword123`
+- **Developer**: `developer@iwings.io` / `Adminpassword123`
 
 ### العملاء
 - Tech Solutions Ltd

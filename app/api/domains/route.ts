@@ -4,12 +4,20 @@ import { ApiResponseHelper } from '@/lib/api/response';
 import { asyncHandler } from '@/lib/api/error-handler';
 import { z } from 'zod';
 import { DomainStatus, BillingCycle } from '@prisma/client';
-
+import { getUserFromRequest, canAccess } from '@/lib/permissions';import prisma from '@/lib/prisma';
 /**
  * GET /api/domains
  * جلب جميع النطاقات مع pagination وفلاتر
  */
 export const GET = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'domain', 'view')) {
+    return ApiResponseHelper.unauthorized('Access denied to domains');
+  }
   const searchParams = req.nextUrl.searchParams;
   const page = parseInt(searchParams.get('page') || '1');
   const pageSize = parseInt(searchParams.get('pageSize') || '10');
@@ -40,6 +48,25 @@ export const GET = asyncHandler(async (req: NextRequest) => {
 
   const orderBy: any = {};
   orderBy[sortBy] = sortOrder;
+
+  // 🔐 For non-admin users, only return accessible domains
+  if (!['super_admin', 'admin'].includes(user.role)) {
+    const userDomainPermissions = await prisma.userPermission.findMany({
+      where: {
+        userId: user.userId,
+        entityType: 'domain',
+      },
+      select: { entityId: true },
+    });
+
+    const accessibleDomainIds = userDomainPermissions
+      .filter(p => p.entityId !== null)
+      .map(p => p.entityId as number);
+
+    if (accessibleDomainIds.length > 0) {
+      filters.accessibleIds = accessibleDomainIds;
+    }
+  }
 
   const [domains, total] = await Promise.all([
     domainRepository.findAllWithFilters(filters, page, pageSize, orderBy),
@@ -89,6 +116,15 @@ const createDomainSchema = z.object({
 });
 
 export const POST = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'domain', 'edit')) {
+    return ApiResponseHelper.unauthorized('Permission denied - edit access required');
+  }
+
   const body = await req.json();
   const validatedData = createDomainSchema.parse(body);
 

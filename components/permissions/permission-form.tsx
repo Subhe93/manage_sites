@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { EntityType, PermissionLevel } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,11 +23,11 @@ import { useUsers } from '@/hooks/use-users';
 
 const permissionSchema = z.object({
   userId: z.number().int().positive('User is required'),
-  entityType: z.enum(['client', 'domain', 'server', 'website', 'project', 'all'], {
+  entityType: z.nativeEnum(EntityType, {
     required_error: 'Entity type is required',
   }),
   entityId: z.number().int().positive().nullable(),
-  permissionLevel: z.enum(['view', 'edit', 'admin', 'owner'], {
+  permissionLevel: z.nativeEnum(PermissionLevel, {
     required_error: 'Permission level is required',
   }),
   grantedBy: z.number().int().positive().optional(),
@@ -125,12 +126,20 @@ export function PermissionForm({ permission, mode }: PermissionFormProps) {
                 <SelectValue placeholder="Select entity type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="client">Client</SelectItem>
-                <SelectItem value="domain">Domain</SelectItem>
-                <SelectItem value="server">Server</SelectItem>
-                <SelectItem value="website">Website</SelectItem>
-                <SelectItem value="project">Project</SelectItem>
                 <SelectItem value="all">All Entities</SelectItem>
+                <SelectItem value="client">Clients</SelectItem>
+                <SelectItem value="domain">Domains</SelectItem>
+                <SelectItem value="server">Servers</SelectItem>
+                <SelectItem value="website">Websites</SelectItem>
+                <SelectItem value="providers">Service Providers</SelectItem>
+                <SelectItem value="cloudflare">Cloudflare</SelectItem>
+                <SelectItem value="google">Google Services</SelectItem>
+                <SelectItem value="uptime">Uptime Monitor</SelectItem>
+                <SelectItem value="notifications">Notifications</SelectItem>
+                <SelectItem value="activity">Activity Log</SelectItem>
+                <SelectItem value="users">Users</SelectItem>
+                <SelectItem value="permissions">Permissions</SelectItem>
+                <SelectItem value="settings">Settings</SelectItem>
               </SelectContent>
             </Select>
             {errors.entityType && (

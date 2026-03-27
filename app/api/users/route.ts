@@ -4,12 +4,22 @@ import { ApiResponseHelper } from '@/lib/api/response';
 import { asyncHandler } from '@/lib/api/error-handler';
 import { z } from 'zod';
 import * as bcrypt from 'bcrypt';
+import { getUserFromRequest, canAccess } from '@/lib/permissions';
+import prisma from '@/lib/prisma';
 
 /**
  * GET /api/users
  * جلب جميع المستخدمين مع pagination وفلاتر
  */
 export const GET = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات - admin only
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'all', 'admin')) {
+    return ApiResponseHelper.unauthorized('Permission denied - admin access required');
+  }
   const searchParams = req.nextUrl.searchParams;
   const page = parseInt(searchParams.get('page') || '1');
   const pageSize = parseInt(searchParams.get('pageSize') || '10');
@@ -62,7 +72,7 @@ export const GET = asyncHandler(async (req: NextRequest) => {
   });
 
   // إزالة passwordHash من النتائج
-  const sanitizedData = result.data.map(({ passwordHash, ...user }) => user);
+  const sanitizedData = result.data.map(({ passwordHash, ...user }: any) => user);
 
   return ApiResponseHelper.successWithPagination(sanitizedData, result.pagination);
 });
@@ -81,6 +91,15 @@ const createUserSchema = z.object({
 });
 
 export const POST = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات - admin only
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'all', 'admin')) {
+    return ApiResponseHelper.unauthorized('Permission denied - admin access required');
+  }
+
   const body = await req.json();
   const validatedData = createUserSchema.parse(body);
 
@@ -98,7 +117,7 @@ export const POST = asyncHandler(async (req: NextRequest) => {
   // تشفير كلمة المرور
   const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
-  const user = await userRepository.create({
+  const newUser = await userRepository.create({
     username: validatedData.username,
     email: validatedData.email,
     passwordHash: hashedPassword,
@@ -107,8 +126,34 @@ export const POST = asyncHandler(async (req: NextRequest) => {
     isActive: validatedData.isActive,
   });
 
+  // 🔐 Set default permissions based on role
+  const defaultPermissionLevel = {
+    super_admin: 'admin' as const,  // Super admins get full access via role
+    admin: 'admin' as const,         // Admins get full access via role
+    developer: 'edit' as const,      // Developers get edit access
+    client: 'view' as const,         // Clients get view-only access
+    viewer: 'view' as const,         // Viewers get view-only access
+  }[validatedData.role];
+
+  // For non-admin users, create default section permissions
+  if (!['super_admin', 'admin'].includes(validatedData.role)) {
+    const defaultSections = ['client', 'domain', 'server', 'website'];
+    
+    for (const section of defaultSections) {
+      await prisma.userPermission.create({
+        data: {
+          userId: newUser.id,
+          entityType: section as any,
+          entityId: null,
+          permissionLevel: defaultPermissionLevel,
+          grantedBy: user.userId,
+        },
+      });
+    }
+  }
+
   // إزالة passwordHash من النتيجة
-  const { passwordHash, ...sanitizedUser } = user;
+  const { passwordHash, ...sanitizedUser } = newUser;
 
   return ApiResponseHelper.created(sanitizedUser);
 });

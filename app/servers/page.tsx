@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { ServersStats } from '@/components/servers/servers-stats';
 import { ServersFilters } from '@/components/servers/servers-filters';
 import { ServersTable } from '@/components/servers/servers-table';
+import { PermissionGate } from '@/components/auth/permission-gate';
 
 export default function ServersPage() {
   const router = useRouter();
@@ -51,37 +52,41 @@ export default function ServersPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Servers</h1>
-          <p className="text-gray-500 mt-1">
-            Manage your hosting servers and infrastructure
-          </p>
+    <PermissionGate section="servers" level="view">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Servers</h1>
+            <p className="text-gray-500 mt-1">
+              Manage your hosting servers and infrastructure
+            </p>
+          </div>
+          <PermissionGate section="servers" level="edit">
+            <Button onClick={() => router.push('/servers/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Server
+            </Button>
+          </PermissionGate>
         </div>
-        <Button onClick={() => router.push('/servers/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Server
-        </Button>
+
+        {/* Stats */}
+        <ServersStats />
+
+        {/* Filters */}
+        <ServersFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onReset={handleReset}
+        />
+
+        {/* Table */}
+        <ServersTable
+          filters={filters}
+          onPageChange={handlePageChange}
+          onSortChange={handleSortChange}
+        />
       </div>
-
-      {/* Stats */}
-      <ServersStats />
-
-      {/* Filters */}
-      <ServersFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onReset={handleReset}
-      />
-
-      {/* Table */}
-      <ServersTable
-        filters={filters}
-        onPageChange={handlePageChange}
-        onSortChange={handleSortChange}
-      />
-    </div>
+    </PermissionGate>
   );
 }

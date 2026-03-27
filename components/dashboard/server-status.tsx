@@ -3,8 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { mockServers, mockServerMonitoring } from '@/lib/mock-data';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Server, Cpu, MemoryStick, HardDrive, Wifi } from 'lucide-react';
+import type { ServerWithMonitoring } from '@/hooks/use-dashboard';
+
+interface ServerStatusProps {
+  servers: ServerWithMonitoring[];
+  loading: boolean;
+}
 
 const statusColors: Record<string, string> = {
   active: 'bg-[hsl(162,63%,41%)]',
@@ -20,13 +26,7 @@ const statusBadgeColors: Record<string, string> = {
   terminated: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
-function getProgressColor(value: number): string {
-  if (value >= 80) return 'bg-destructive';
-  if (value >= 60) return 'bg-[hsl(43,96%,46%)]';
-  return 'bg-[hsl(162,63%,41%)]';
-}
-
-export function ServerStatus() {
+export function ServerStatus({ servers, loading }: ServerStatusProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -36,71 +36,82 @@ export function ServerStatus() {
             Server Status
           </CardTitle>
           <Badge variant="secondary" className="text-[10px]">
-            {mockServers.length} servers
+            {servers.length} servers
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {mockServers.map((server) => {
-          const monitoring = mockServerMonitoring.find(m => m.server_id === server.id);
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+          ))
+        ) : servers.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">No servers found</p>
+        ) : (
+          servers.map((server) => {
+            const monitoring = server.monitoring?.[0] || null;
 
-          return (
-            <div
-              key={server.id}
-              className="rounded-lg border p-3.5 hover:shadow-sm transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className={`h-2 w-2 rounded-full ${statusColors[server.status]}`} />
-                  <div>
-                    <p className="text-sm font-medium">{server.server_name}</p>
-                    <p className="text-[11px] text-muted-foreground">{server.ip_address} &middot; {server.location}</p>
+            return (
+              <div
+                key={server.id}
+                className="rounded-lg border p-3.5 hover:shadow-sm transition-shadow"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`h-2 w-2 rounded-full ${statusColors[server.status] || 'bg-muted-foreground'}`} />
+                    <div>
+                      <p className="text-sm font-medium">{server.serverName}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {server.ipAddress || '-'} &middot; {server.location || '-'}
+                        {server.provider ? ` &middot; ${server.provider.providerName}` : ''}
+                      </p>
+                    </div>
                   </div>
+                  <Badge variant="outline" className={`text-[10px] ${statusBadgeColors[server.status] || ''}`}>
+                    {server.status}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className={`text-[10px] ${statusBadgeColors[server.status]}`}>
-                  {server.status}
-                </Badge>
+
+                {monitoring && server.status === 'active' && (
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Cpu className="h-3 w-3" /> CPU
+                      </div>
+                      <Progress value={monitoring.cpuUsage ?? 0} className="h-1.5" />
+                      <p className="text-[10px] font-medium">{monitoring.cpuUsage ?? 0}%</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <MemoryStick className="h-3 w-3" /> RAM
+                      </div>
+                      <Progress value={monitoring.ramUsage ?? 0} className="h-1.5" />
+                      <p className="text-[10px] font-medium">{monitoring.ramUsage ?? 0}%</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <HardDrive className="h-3 w-3" /> Storage
+                      </div>
+                      <Progress value={monitoring.storageUsage ?? 0} className="h-1.5" />
+                      <p className="text-[10px] font-medium">{monitoring.storageUsage ?? 0}%</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Wifi className="h-3 w-3" /> Uptime
+                      </div>
+                      <Progress value={monitoring.uptimePercentage ?? 0} className="h-1.5" />
+                      <p className="text-[10px] font-medium">{monitoring.uptimePercentage ?? 0}%</p>
+                    </div>
+                  </div>
+                )}
+
+                {server.status === 'maintenance' && (
+                  <p className="text-xs text-muted-foreground italic">Server is under maintenance</p>
+                )}
               </div>
-
-              {monitoring && server.status === 'active' && (
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Cpu className="h-3 w-3" /> CPU
-                    </div>
-                    <Progress value={monitoring.cpu_usage} className="h-1.5" />
-                    <p className="text-[10px] font-medium">{monitoring.cpu_usage}%</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <MemoryStick className="h-3 w-3" /> RAM
-                    </div>
-                    <Progress value={monitoring.ram_usage} className="h-1.5" />
-                    <p className="text-[10px] font-medium">{monitoring.ram_usage}%</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <HardDrive className="h-3 w-3" /> Storage
-                    </div>
-                    <Progress value={monitoring.storage_usage} className="h-1.5" />
-                    <p className="text-[10px] font-medium">{monitoring.storage_usage}%</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Wifi className="h-3 w-3" /> Uptime
-                    </div>
-                    <Progress value={monitoring.uptime_percentage} className="h-1.5" />
-                    <p className="text-[10px] font-medium">{monitoring.uptime_percentage}%</p>
-                  </div>
-                </div>
-              )}
-
-              {server.status === 'maintenance' && (
-                <p className="text-xs text-muted-foreground italic">Server is under maintenance</p>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </CardContent>
     </Card>
   );

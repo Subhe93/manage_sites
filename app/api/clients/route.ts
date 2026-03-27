@@ -3,13 +3,24 @@ import { clientRepository } from '@/lib/db/repositories';
 import { ApiResponseHelper } from '@/lib/api/response';
 import { asyncHandler } from '@/lib/api/error-handler';
 import { z } from 'zod';
-import { ClientStatus } from '@prisma/client';
+import { ClientStatus, BillingCycle, CostType } from '@prisma/client';
+import { getUserFromRequest, canAccess } from '@/lib/permissions';
+import prisma from '@/lib/prisma';
 
 /**
  * GET /api/clients
  * جلب جميع العملاء مع pagination وفلاتر
  */
 export const GET = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'client', 'view')) {
+    return ApiResponseHelper.unauthorized('Access denied to clients');
+  }
+
   const searchParams = req.nextUrl.searchParams;
   const page = parseInt(searchParams.get('page') || '1');
   const pageSize = parseInt(searchParams.get('pageSize') || '10');
@@ -31,6 +42,27 @@ export const GET = asyncHandler(async (req: NextRequest) => {
 
   if (search && search.trim() !== '' && search !== 'undefined') {
     filters.search = search;
+  }
+
+  // 🔐 For non-admin users, only return accessible clients
+  if (!['super_admin', 'admin'].includes(user.role)) {
+    // Get all client IDs the user has access to
+    const userClientPermissions = await prisma.userPermission.findMany({
+      where: {
+        userId: user.userId,
+        entityType: 'client',
+      },
+      select: { entityId: true },
+    });
+
+    const accessibleClientIds = userClientPermissions
+      .filter(p => p.entityId !== null)
+      .map(p => p.entityId as number);
+
+    // If user has specific client permissions, filter by those
+    if (accessibleClientIds.length > 0) {
+      filters.accessibleIds = accessibleClientIds;
+    }
   }
 
   const orderBy: any = {};
@@ -68,9 +100,30 @@ const createClientSchema = z.object({
   status: z.nativeEnum(ClientStatus),
   notes: z.string().optional().nullable(),
   createdBy: z.number().int().positive().optional().nullable(),
+  costs: z.array(z.object({
+    costAmount: z.number().positive(),
+    currency: z.string(),
+    billingCycle: z.nativeEnum(BillingCycle),
+    costType: z.nativeEnum(CostType),
+    description: z.string().optional().nullable(),
+    startDate: z.string().optional().nullable(),
+    nextBillingDate: z.string().optional().nullable(),
+    autoRenew: z.boolean().default(true),
+    paymentMethod: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+  })).optional(),
 });
 
 export const POST = asyncHandler(async (req: NextRequest) => {
+  // ✅ فحص الصلاحيات
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return ApiResponseHelper.unauthorized('Not authenticated');
+  }
+  if (!canAccess(user, 'client', 'edit')) {
+    return ApiResponseHelper.unauthorized('Permission denied - edit access required');
+  }
+
   const body = await req.json();
   const validatedData = createClientSchema.parse(body);
 
@@ -88,6 +141,23 @@ export const POST = asyncHandler(async (req: NextRequest) => {
   if (validatedData.createdBy) {
     clientData.creator = {
       connect: { id: validatedData.createdBy },
+    };
+  }
+
+  if (validatedData.costs && validatedData.costs.length > 0) {
+    clientData.costs = {
+      create: validatedData.costs.map((cost) => ({
+        costAmount: cost.costAmount,
+        currency: cost.currency,
+        billingCycle: cost.billingCycle,
+        costType: cost.costType,
+        description: cost.description || null,
+        startDate: cost.startDate ? new Date(cost.startDate) : null,
+        nextBillingDate: cost.nextBillingDate ? new Date(cost.nextBillingDate) : null,
+        autoRenew: cost.autoRenew,
+        paymentMethod: cost.paymentMethod || null,
+        notes: cost.notes || null,
+      })),
     };
   }
 

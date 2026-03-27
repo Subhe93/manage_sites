@@ -54,12 +54,12 @@ async function main() {
 
   // Create Users
   console.log('👤 Creating users...');
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const hashedPassword = await bcrypt.hash('Adminpassword123', 10);
   
   const superAdmin = await prisma.user.create({
     data: {
       username: 'superadmin',
-      email: 'superadmin@example.com',
+      email: 'superadmin@iwings.io',
       passwordHash: hashedPassword,
       fullName: 'Super Admin',
       role: 'super_admin',
@@ -70,7 +70,7 @@ async function main() {
   const admin = await prisma.user.create({
     data: {
       username: 'admin',
-      email: 'admin@example.com',
+      email: 'admin@iwings.io',
       passwordHash: hashedPassword,
       fullName: 'Admin User',
       role: 'admin',
@@ -81,7 +81,7 @@ async function main() {
   const developer = await prisma.user.create({
     data: {
       username: 'developer',
-      email: 'developer@example.com',
+      email: 'developer@iwings.io',
       passwordHash: hashedPassword,
       fullName: 'Developer User',
       role: 'developer',

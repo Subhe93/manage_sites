@@ -111,8 +111,15 @@ export function PermissionsTable({ filters, onPageChange, onSortChange }: Permis
       domain: 'bg-sky-100 text-sky-700',
       server: 'bg-amber-100 text-amber-700',
       website: 'bg-purple-100 text-purple-700',
-      project: 'bg-pink-100 text-pink-700',
-      all: 'bg-red-100 text-red-700',
+      providers: 'bg-blue-100 text-blue-700',
+      cloudflare: 'bg-orange-100 text-orange-700',
+      google: 'bg-red-100 text-red-700',
+      uptime: 'bg-green-100 text-green-700',
+      notifications: 'bg-indigo-100 text-indigo-700',
+      activity: 'bg-cyan-100 text-cyan-700',
+      users: 'bg-rose-100 text-rose-700',
+      permissions: 'bg-violet-100 text-violet-700',
+      settings: 'bg-slate-100 text-slate-700',
     };
 
     return (
