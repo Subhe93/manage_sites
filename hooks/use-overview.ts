@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 
 export interface OverviewFilters {
   page: number;
-  pageSize: number;
+  pageSize: number | 'all';
   sortBy: string;
   sortOrder: 'asc' | 'desc';
   customFilters: any[];
@@ -46,8 +46,11 @@ export function useOverview(filters: OverviewFilters) {
       const result = await res.json();
       
       if (result.success) {
-        setData(result.data.items || result.data);
-        if (result.data.pagination) {
+        setData(result.data?.items || result.data || []);
+        // pagination lives at result.pagination (from ApiResponseHelper.successWithPagination)
+        if (result.pagination) {
+          setPagination(result.pagination);
+        } else if (result.data?.pagination) {
           setPagination(result.data.pagination);
         } else if (result.meta?.pagination) {
           setPagination(result.meta.pagination);

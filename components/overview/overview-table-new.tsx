@@ -105,8 +105,8 @@ interface OverviewTableNewProps {
   onColumnFilterChange: (field: string, filter: ActiveFilter | null) => void;
   columnOrder: string[];
   onColumnOrderChange: (newOrder: string[]) => void;
-  pageSize: number;
-  onPageSizeChange: (size: number) => void;
+  pageSize: number | 'all';
+  onPageSizeChange: (size: number | 'all') => void;
   filterOptions: Record<string, string[]>;
 }
 
@@ -313,78 +313,12 @@ export function OverviewTableNew({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            Showing{' '}
-            <span className="font-medium text-foreground">
-              {Math.min((pagination.page - 1) * pagination.pageSize + 1, pagination.total)}
-            </span>{' '}
-            to{' '}
-            <span className="font-medium text-foreground">
-              {Math.min(pagination.page * pagination.pageSize, pagination.total)}
-            </span>{' '}
-            of <span className="font-medium text-foreground">{pagination.total}</span> records
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Rows:</span>
-            <select
-              className="h-7 rounded border bg-background px-2 text-xs"
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {pagination.totalPages > 1 && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => onPageChange(1)}
-              disabled={pagination.page === 1}
-            >
-              First
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => onPageChange(pagination.page - 1)}
-              disabled={pagination.page === 1}
-            >
-              Prev
-            </Button>
-            <span className="text-xs text-muted-foreground px-2">
-              Page {pagination.page} of {pagination.totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => onPageChange(pagination.page + 1)}
-              disabled={pagination.page === pagination.totalPages}
-            >
-              Next
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => onPageChange(pagination.totalPages)}
-              disabled={pagination.page === pagination.totalPages}
-            >
-              Last
-            </Button>
-          </div>
-        )}
-      </div>
+      <PaginationBar
+        pagination={pagination}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
     </div>
   );
 }
@@ -704,6 +638,150 @@ function GoogleServiceCell({ websites, field }: { websites: any[]; field: string
         </div>
       ) : <span className="text-muted-foreground text-xs">-</span>}
     </TableCell>
+  );
+}
+
+function PaginationBar({
+  pagination,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
+  pageSize: number | 'all';
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number | 'all') => void;
+}) {
+  const isShowAll = pageSize === 'all';
+  const { page, total, totalPages } = pagination;
+
+  // Generate visible page numbers
+  const getPageNumbers = (): (number | '...')[] => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | '...')[] = [];
+    if (page <= 3) {
+      pages.push(1, 2, 3, 4, '...', totalPages);
+    } else if (page >= totalPages - 2) {
+      pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, '...', page - 1, page, page + 1, '...', totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <div className="flex items-center justify-between border-t pt-4">
+      {/* Left: Info & page size */}
+      <div className="flex items-center gap-4">
+        <p className="text-sm text-muted-foreground">
+          {isShowAll ? (
+            <>
+              Showing all <span className="font-semibold text-foreground">{total}</span> records
+            </>
+          ) : (
+            <>
+              Showing{' '}
+              <span className="font-semibold text-foreground">
+                {total === 0 ? 0 : (page - 1) * pagination.pageSize + 1}
+              </span>
+              {' '}-{' '}
+              <span className="font-semibold text-foreground">
+                {Math.min(page * pagination.pageSize, total)}
+              </span>
+              {' '}of{' '}
+              <span className="font-semibold text-foreground">{total}</span>
+            </>
+          )}
+        </p>
+        <div className="flex items-center gap-2 border-l pl-4">
+          <span className="text-xs text-muted-foreground">Rows per page</span>
+          <select
+            className="h-8 rounded-md border bg-background px-2 text-sm font-medium cursor-pointer hover:bg-accent transition-colors"
+            value={pageSize}
+            onChange={(e) => {
+              const val = e.target.value;
+              onPageSizeChange(val === 'all' ? 'all' : Number(val));
+            }}
+          >
+            {[10, 20, 50, 100].map((size) => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+            <option value="all">All</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Right: Page navigation */}
+      {!isShowAll && totalPages > 1 && (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(1)}
+            disabled={page === 1}
+            title="First page"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+            title="Previous page"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </Button>
+
+          {getPageNumbers().map((p, i) =>
+            p === '...' ? (
+              <span key={`dots-${i}`} className="px-1 text-muted-foreground text-sm">...</span>
+            ) : (
+              <Button
+                key={p}
+                variant={p === page ? 'default' : 'outline'}
+                size="sm"
+                className={`h-8 w-8 p-0 text-sm font-medium ${p === page ? '' : 'text-muted-foreground'}`}
+                onClick={() => onPageChange(p as number)}
+              >
+                {p}
+              </Button>
+            )
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page === totalPages}
+            title="Next page"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(totalPages)}
+            disabled={page === totalPages}
+            title="Last page"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

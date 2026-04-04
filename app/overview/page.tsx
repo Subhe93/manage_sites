@@ -65,7 +65,7 @@ export default function OverviewPage() {
   const [columnOrder, setColumnOrder] = useState<string[]>(defaultColumnOrder);
   const [globalSearch, setGlobalSearch] = useState('');
   const [columnFilters, setColumnFilters] = useState<Record<string, ActiveFilter>>({});
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState<number | 'all'>(20);
   const [filterOptions, setFilterOptions] = useState<Record<string, string[]>>({});
 
   // Load saved column state from localStorage on mount
@@ -88,7 +88,7 @@ export default function OverviewPage() {
 
   const [filters, setFilters] = useState<{
     page: number;
-    pageSize: number;
+    pageSize: number | 'all';
     sortBy: string;
     sortOrder: 'asc' | 'desc';
     customFilters: any[];
@@ -189,7 +189,7 @@ export default function OverviewPage() {
     saveToStorage(STORAGE_KEY_COLUMN_ORDER, defaultColumnOrder);
   };
 
-  const handlePageSizeChange = (size: number) => {
+  const handlePageSizeChange = (size: number | 'all') => {
     setPageSize(size);
     setFilters((prev) => ({ ...prev, page: 1, pageSize: size }));
   };

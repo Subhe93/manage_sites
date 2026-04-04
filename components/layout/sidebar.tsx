@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUserPermissions } from '@/hooks/use-user-permissions';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Globe, Server, Monitor, Users, Building2, Cloud, ChartBar as BarChart3, Search, Bell, Activity, Settings, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft, UserCog, Lock, LogOut } from 'lucide-react';
+import { LayoutDashboard, Globe, Server, Monitor, Users, Building2, Cloud, ChartBar as BarChart3, Search, Bell, Activity, Settings, ChevronDown, ChevronRight, PanelLeftClose, PanelLeft, UserCog, Lock, LogOut, Upload } from 'lucide-react';
 
 interface NavItem {
   label: string;
@@ -46,6 +46,7 @@ const navigation: NavItem[] = [
   { label: 'Activity Log', href: '/activity', icon: Search },
   { label: 'Users', href: '/users', icon: UserCog },
   { label: 'Permissions', href: '/permissions', icon: Lock },
+  { label: 'Import Data', href: '/import', icon: Upload },
   {
     label: 'Settings',
     href: '/settings',
@@ -134,7 +135,7 @@ export function Sidebar() {
     };
 
     // Show admin-only sections only to admins
-    if (['/users', '/permissions'].some(path => item.href === path)) {
+    if (['/users', '/permissions', '/import'].some(path => item.href === path)) {
       return isAdmin;
     }
 

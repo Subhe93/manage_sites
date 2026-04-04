@@ -7,7 +7,9 @@ export async function POST(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '20');
+    const pageSizeParam = searchParams.get('pageSize') || '20';
+    const showAll = pageSizeParam === 'all';
+    const pageSize = showAll ? 999999 : parseInt(pageSizeParam);
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
 
