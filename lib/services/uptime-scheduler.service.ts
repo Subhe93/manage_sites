@@ -93,4 +93,24 @@ export class UptimeSchedulerService {
     console.log('[UptimeScheduler] Running manual check...');
     await UptimeCheckerService.runAutomaticCheck();
   }
+
+  static async cleanupOldLogs(): Promise<void> {
+    try {
+      const settings = await this.getSettings();
+      const retentionDays = settings?.logRetentionDays ?? 30;
+      const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+
+      const result = await prisma.uptimeLog.deleteMany({
+        where: {
+          checkedAt: { lt: cutoffDate },
+        },
+      });
+
+      if (result.count > 0) {
+        console.log(`[UptimeScheduler] Cleaned up ${result.count} old uptime logs (older than ${retentionDays} days)`);
+      }
+    } catch (error) {
+      console.error('[UptimeScheduler] Failed to cleanup old logs:', error);
+    }
+  }
 }

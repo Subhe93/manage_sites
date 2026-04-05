@@ -22,7 +22,10 @@ interface EndpointResult extends EndpointTarget {
 
 interface EndpointResponse extends EndpointResult {
   checkId: number | null;
+  uptimePercentage24h: number | null;
 }
+
+// ─── Utilities ───────────────────────────────────────────────────────────────
 
 async function mapWithConcurrency<T, R>(
   items: T[],
@@ -108,7 +111,7 @@ async function probeUrl(url: string, timeoutMs: number): Promise<Omit<EndpointRe
   }
 }
 
-function buildTargets(website: any): EndpointTarget[] {
+function buildTargets(website: any, checkSubdomains: boolean = true): EndpointTarget[] {
   const targets: EndpointTarget[] = [];
 
   const primaryUrl = normalizeUrl(website.websiteUrl || website.domain?.domainName || '');
@@ -118,6 +121,10 @@ function buildTargets(website: any): EndpointTarget[] {
       label: 'Main Website',
       url: primaryUrl,
     });
+  }
+
+  if (!checkSubdomains) {
+    return Array.from(new Map(targets.map((t) => [t.url, t])).values());
   }
 
   if (website.apiEndpoint) {
@@ -172,9 +179,9 @@ function buildTargets(website: any): EndpointTarget[] {
   return Array.from(deduped.values());
 }
 
-function aggregateWebsiteStatus(endpointResults: EndpointResult[]): MonitorStatus {
-  if (endpointResults.some((e) => e.status === 'down')) return 'down';
-  if (endpointResults.some((e) => e.status === 'degraded')) return 'degraded';
+function aggregateStatus(statuses: MonitorStatus[]): MonitorStatus {
+  if (statuses.some((s) => s === 'down')) return 'down';
+  if (statuses.some((s) => s === 'degraded')) return 'degraded';
   return 'up';
 }
 
@@ -258,9 +265,143 @@ async function syncWebsiteCheckLinks(websiteId: number, activeUrls: string[]) {
   }
 }
 
-export const GET = asyncHandler(async (req: NextRequest) => {
-  const timeoutMs = Math.max(parseInt(req.nextUrl.searchParams.get('timeoutMs') || '10000', 10), 2000);
-  const shouldPersist = req.nextUrl.searchParams.get('persist') === 'true';
+// ─── Uptime percentage calculation ───────────────────────────────────────────
+
+async function calculateUptimePercentage(checkId: number, hours: number = 24): Promise<number | null> {
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+  const logs = await prisma.uptimeLog.findMany({
+    where: {
+      uptimeCheckId: checkId,
+      checkedAt: { gte: since },
+    },
+    select: { status: true },
+  });
+
+  if (logs.length === 0) return null;
+
+  const upCount = logs.filter((l) => l.status === 'up').length;
+  return Math.round((upCount / logs.length) * 10000) / 100;
+}
+
+// ─── Cached mode: fast DB read ───────────────────────────────────────────────
+
+async function getCachedResults() {
+  const websites = await prisma.website.findMany({
+    where: {
+      OR: [
+        { websiteUrl: { not: null } },
+        { apiEndpoint: { not: null } },
+        { subdomains: { some: { fullUrl: { not: null } } } },
+      ],
+    },
+    select: {
+      id: true,
+      websiteName: true,
+      websiteUrl: true,
+      apiEndpoint: true,
+      adminUrl: true,
+      checkSubdomains: true,
+      domain: { select: { domainName: true } },
+      subdomains: {
+        select: { id: true, subdomainName: true, fullUrl: true, adminUrl: true },
+      },
+      uptimeChecks: {
+        where: { isActive: true },
+        select: {
+          id: true,
+          checkUrl: true,
+          lastCheckAt: true,
+          lastStatus: true,
+          logs: {
+            take: 1,
+            orderBy: { checkedAt: 'desc' },
+            select: {
+              status: true,
+              responseTimeMs: true,
+              statusCode: true,
+              errorMessage: true,
+              checkedAt: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: { websiteName: 'asc' },
+  });
+
+  const websiteResults = await Promise.all(
+    websites.map(async (website) => {
+      const targets = buildTargets(website, website.checkSubdomains ?? false);
+      const checksByUrl = new Map(website.uptimeChecks.map((c) => [c.checkUrl, c]));
+
+      const endpoints: EndpointResponse[] = await Promise.all(
+        targets.map(async (target) => {
+          const check = checksByUrl.get(target.url);
+          const lastLog = check?.logs?.[0];
+          const uptimePercentage24h = check ? await calculateUptimePercentage(check.id, 24) : null;
+
+          return {
+            checkId: check?.id ?? null,
+            type: target.type,
+            label: target.label,
+            url: target.url,
+            status: (lastLog?.status as MonitorStatus) ?? (check ? 'down' : 'unknown'),
+            statusCode: lastLog?.statusCode ?? null,
+            responseTimeMs: lastLog?.responseTimeMs ?? null,
+            errorMessage: lastLog?.errorMessage ?? null,
+            checkedAt: lastLog?.checkedAt?.toISOString() ?? new Date().toISOString(),
+            uptimePercentage24h,
+          };
+        })
+      );
+
+      const statuses = endpoints.map((e) => e.status);
+      const responseTimes = endpoints
+        .map((e) => e.responseTimeMs)
+        .filter((v): v is number => v !== null);
+
+      const avgResponseTimeMs =
+        responseTimes.length > 0
+          ? Math.round(responseTimes.reduce((s, v) => s + v, 0) / responseTimes.length)
+          : null;
+
+      const uptimeValues = endpoints
+        .map((e) => e.uptimePercentage24h)
+        .filter((v): v is number => v !== null);
+
+      const uptimePercentage24h =
+        uptimeValues.length > 0
+          ? Math.round((uptimeValues.reduce((s, v) => s + v, 0) / uptimeValues.length) * 100) / 100
+          : null;
+
+      return {
+        websiteId: website.id,
+        websiteName: website.websiteName,
+        checkSubdomains: website.checkSubdomains ?? false,
+        websiteStatus: statuses.length > 0 ? aggregateStatus(statuses) : ('unknown' as MonitorStatus),
+        checkedEndpoints: endpoints.length,
+        avgResponseTimeMs,
+        uptimePercentage24h,
+        lastCheckAt: endpoints.reduce((latest, e) => {
+          const t = new Date(e.checkedAt).getTime();
+          return t > latest ? t : latest;
+        }, 0),
+        endpoints,
+      };
+    })
+  );
+
+  return websiteResults
+    .filter((w) => w.endpoints.length > 0)
+    .map((w) => ({
+      ...w,
+      lastCheckAt: w.lastCheckAt ? new Date(w.lastCheckAt).toISOString() : null,
+    }));
+}
+
+// ─── Live mode: real-time probing ────────────────────────────────────────────
+
+async function getLiveResults(timeoutMs: number, shouldPersist: boolean) {
   const probeConcurrency = 5;
 
   const websites = await prisma.website.findMany({
@@ -277,115 +418,111 @@ export const GET = asyncHandler(async (req: NextRequest) => {
       websiteUrl: true,
       apiEndpoint: true,
       adminUrl: true,
-      domain: {
-        select: {
-          domainName: true,
-        },
-      },
+      checkSubdomains: true,
+      domain: { select: { domainName: true } },
       subdomains: {
-        select: {
-          id: true,
-          subdomainName: true,
-          fullUrl: true,
-          adminUrl: true,
-        },
+        select: { id: true, subdomainName: true, fullUrl: true, adminUrl: true },
       },
     },
-    orderBy: {
-      websiteName: 'asc',
-    },
+    orderBy: { websiteName: 'asc' },
   });
 
   const websiteWithTargets = websites.map((website) => ({
     website,
-    targets: buildTargets(website),
+    targets: buildTargets(website, website.checkSubdomains ?? false),
   }));
 
   if (shouldPersist) {
     await mapWithConcurrency(websiteWithTargets, probeConcurrency, async ({ website, targets }) => {
-      await syncWebsiteCheckLinks(
-        website.id,
-        targets.map((target) => target.url)
-      );
+      await syncWebsiteCheckLinks(website.id, targets.map((t) => t.url));
       return null;
     });
   }
 
   const endpointJobs = websiteWithTargets.flatMap(({ website, targets }) =>
-    targets.map((target) => ({
-      websiteId: website.id,
-      target,
-    }))
+    targets.map((target) => ({ websiteId: website.id, target }))
   );
 
   const endpointOutputs = await mapWithConcurrency(endpointJobs, probeConcurrency, async ({ websiteId, target }) => {
     const probe = await probeUrl(target.url, timeoutMs);
-    const result: EndpointResult = {
-      ...target,
-      ...probe,
-    };
-
+    const result: EndpointResult = { ...target, ...probe };
     const checkId = shouldPersist ? await persistUptimeResult(websiteId, result) : null;
+    const uptimePercentage24h = checkId ? await calculateUptimePercentage(checkId, 24) : null;
 
     return {
       websiteId,
-      endpoint: {
-        checkId,
-        ...result,
-      } as EndpointResponse,
+      endpoint: { checkId, ...result, uptimePercentage24h } as EndpointResponse,
     };
   });
 
   const endpointsByWebsite = new Map<number, EndpointResponse[]>();
-  for (const website of websites) {
-    endpointsByWebsite.set(website.id, []);
-  }
+  for (const w of websites) endpointsByWebsite.set(w.id, []);
+  for (const o of endpointOutputs) endpointsByWebsite.get(o.websiteId)?.push(o.endpoint);
 
-  for (const output of endpointOutputs) {
-    const websiteEndpoints = endpointsByWebsite.get(output.websiteId);
-    if (websiteEndpoints) {
-      websiteEndpoints.push(output.endpoint);
-    }
-  }
-
-  const websiteResults = websiteWithTargets.map(({ website }) => {
-    const endpointResults = endpointsByWebsite.get(website.id) || [];
-    const responseTimes = endpointResults
-      .map((e) => e.responseTimeMs)
-      .filter((value): value is number => value !== null);
-
+  return websiteWithTargets.map(({ website }) => {
+    const endpoints = endpointsByWebsite.get(website.id) || [];
+    const responseTimes = endpoints.map((e) => e.responseTimeMs).filter((v): v is number => v !== null);
     const avgResponseTimeMs =
       responseTimes.length > 0
-        ? Math.round(responseTimes.reduce((sum, value) => sum + value, 0) / responseTimes.length)
+        ? Math.round(responseTimes.reduce((s, v) => s + v, 0) / responseTimes.length)
         : null;
 
-    const websiteStatus = endpointResults.length > 0 ? aggregateWebsiteStatus(endpointResults) : 'down';
+    const uptimeValues = endpoints.map((e) => e.uptimePercentage24h).filter((v): v is number => v !== null);
+    const uptimePercentage24h =
+      uptimeValues.length > 0
+        ? Math.round((uptimeValues.reduce((s, v) => s + v, 0) / uptimeValues.length) * 100) / 100
+        : null;
+
+    const statuses = endpoints.map((e) => e.status);
 
     return {
       websiteId: website.id,
       websiteName: website.websiteName,
-      websiteStatus,
-      checkedEndpoints: endpointResults.length,
+      checkSubdomains: website.checkSubdomains ?? false,
+      websiteStatus: statuses.length > 0 ? aggregateStatus(statuses) : ('unknown' as MonitorStatus),
+      checkedEndpoints: endpoints.length,
       avgResponseTimeMs,
-      endpoints: endpointResults,
+      uptimePercentage24h,
+      lastCheckAt: new Date().toISOString(),
+      endpoints,
     };
-  });
+  }).filter((w) => w.endpoints.length > 0);
+}
 
-  const allEndpoints = websiteResults.flatMap((website) => website.endpoints);
+// ─── Route handler ───────────────────────────────────────────────────────────
+
+export const GET = asyncHandler(async (req: NextRequest) => {
+  const live = req.nextUrl.searchParams.get('live') === 'true';
+  const persist = req.nextUrl.searchParams.get('persist') !== 'false';
+  const timeoutMs = Math.max(parseInt(req.nextUrl.searchParams.get('timeoutMs') || '10000', 10), 2000);
+
+  const websiteResults = live
+    ? await getLiveResults(timeoutMs, persist)
+    : await getCachedResults();
+
+  const allEndpoints = websiteResults.flatMap((w) => w.endpoints);
   const up = allEndpoints.filter((e) => e.status === 'up').length;
   const down = allEndpoints.filter((e) => e.status === 'down').length;
   const degraded = allEndpoints.filter((e) => e.status === 'degraded').length;
 
   const allResponseTimes = allEndpoints
     .map((e) => e.responseTimeMs)
-    .filter((value): value is number => value !== null);
-
+    .filter((v): v is number => v !== null);
   const averageResponseTimeMs =
     allResponseTimes.length > 0
-      ? Math.round(allResponseTimes.reduce((sum, value) => sum + value, 0) / allResponseTimes.length)
+      ? Math.round(allResponseTimes.reduce((s, v) => s + v, 0) / allResponseTimes.length)
+      : null;
+
+  const allUptimes = websiteResults
+    .map((w) => w.uptimePercentage24h)
+    .filter((v): v is number => v !== null);
+  const overallUptime24h =
+    allUptimes.length > 0
+      ? Math.round((allUptimes.reduce((s, v) => s + v, 0) / allUptimes.length) * 100) / 100
       : null;
 
   return ApiResponseHelper.success({
+    mode: live ? 'live' : 'cached',
     websites: websiteResults,
     stats: {
       totalWebsites: websiteResults.length,
@@ -394,6 +531,7 @@ export const GET = asyncHandler(async (req: NextRequest) => {
       down,
       degraded,
       averageResponseTimeMs,
+      overallUptime24h,
     },
   });
 });

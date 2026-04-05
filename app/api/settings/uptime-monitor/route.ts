@@ -44,6 +44,9 @@ export const PUT = asyncHandler(async (req: NextRequest) => {
     consecutiveFailsBeforeAlert,
     timeoutSeconds,
     maxConcurrentChecks,
+    checkSubdomains,
+    degradedThresholdMs,
+    logRetentionDays,
   } = body;
 
   const existingSettings = await prisma.uptimeMonitorSettings.findFirst({
@@ -66,6 +69,9 @@ export const PUT = asyncHandler(async (req: NextRequest) => {
         consecutiveFailsBeforeAlert,
         timeoutSeconds,
         maxConcurrentChecks,
+        checkSubdomains,
+        degradedThresholdMs,
+        logRetentionDays,
       },
     });
   } else {
@@ -81,6 +87,9 @@ export const PUT = asyncHandler(async (req: NextRequest) => {
         consecutiveFailsBeforeAlert,
         timeoutSeconds,
         maxConcurrentChecks,
+        checkSubdomains,
+        degradedThresholdMs,
+        logRetentionDays,
       },
     });
   }
@@ -103,6 +112,11 @@ export const POST = asyncHandler(async (req: NextRequest) => {
   if (action === 'get_status') {
     const status = UptimeSchedulerService.getStatus();
     return ApiResponseHelper.success(status);
+  }
+
+  if (action === 'cleanup_logs') {
+    await UptimeSchedulerService.cleanupOldLogs();
+    return ApiResponseHelper.success({ message: 'Old logs cleaned up successfully' });
   }
 
   return ApiResponseHelper.error('Invalid action', 400);

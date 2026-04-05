@@ -592,6 +592,7 @@ model Website {
   status          WebsiteStatus
   description     String?
   notes           String?
+  checkSubdomains Boolean       @default(false) @map("check_subdomains")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
@@ -1117,6 +1118,9 @@ model UptimeMonitorSettings {
   consecutiveFailsBeforeAlert Int  @default(2) @map("consecutive_fails_before_alert")
   timeoutSeconds          Int      @default(10) @map("timeout_seconds")
   maxConcurrentChecks     Int      @default(5) @map("max_concurrent_checks")
+  checkSubdomains         Boolean  @default(true) @map("check_subdomains")
+  degradedThresholdMs     Int      @default(2500) @map("degraded_threshold_ms")
+  logRetentionDays        Int      @default(30) @map("log_retention_days")
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 

@@ -24,6 +24,9 @@ interface UptimeSettings {
   consecutiveFailsBeforeAlert: number;
   timeoutSeconds: number;
   maxConcurrentChecks: number;
+  checkSubdomains: boolean;
+  degradedThresholdMs: number;
+  logRetentionDays: number;
 }
 
 interface SchedulerStatus {
@@ -175,6 +178,19 @@ export default function UptimeMonitorSettingsPage() {
             </Select>
           </div>
 
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label>Check Subdomains</Label>
+              <p className="text-sm text-muted-foreground">
+                Include subdomains and their admin URLs in uptime checks
+              </p>
+            </div>
+            <Switch
+              checked={settings.checkSubdomains}
+              onCheckedChange={(checked) => updateSetting('checkSubdomains', checked)}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="timeout">Timeout (seconds)</Label>
@@ -198,6 +214,39 @@ export default function UptimeMonitorSettingsPage() {
                 value={settings.maxConcurrentChecks}
                 onChange={(e) => updateSetting('maxConcurrentChecks', parseInt(e.target.value) || 5)}
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="degradedThreshold">Degraded Threshold (ms)</Label>
+              <Input
+                id="degradedThreshold"
+                type="number"
+                min="500"
+                max="10000"
+                step="100"
+                value={settings.degradedThresholdMs}
+                onChange={(e) => updateSetting('degradedThresholdMs', parseInt(e.target.value) || 2500)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Response time above this value marks endpoint as degraded
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="logRetention">Log Retention (days)</Label>
+              <Input
+                id="logRetention"
+                type="number"
+                min="1"
+                max="365"
+                value={settings.logRetentionDays}
+                onChange={(e) => updateSetting('logRetentionDays', parseInt(e.target.value) || 30)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Uptime logs older than this will be automatically cleaned up
+              </p>
             </div>
           </div>
         </CardContent>
