@@ -9,7 +9,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUp, ArrowDown, ArrowUpDown, ExternalLink, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, ExternalLink, ChevronDown, ChevronRight, GripVertical, LogIn } from 'lucide-react';
+import { openWpLogin } from '@/lib/wp-login';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { PasswordDisplay } from '@/components/ui/password-display';
@@ -424,14 +425,26 @@ function CellRenderer({
       return (
         <TableCell className="align-top">
           {websites.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {websites.map((w: any) => (
-                <div key={w.id} className="text-sm">
+                <div key={w.id} className="flex flex-col gap-1">
                   {w.adminUrl ? (
                     <a href={w.adminUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline flex items-center gap-1 break-all text-xs">
                       {w.adminUrl} <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
-                  ) : <span className="text-muted-foreground text-xs">-</span>}
+                  ) : (
+                    <span className="text-muted-foreground text-xs">-</span>
+                  )}
+                  {w.websiteType === 'wordpress' && (
+                    <button
+                      title="Login to WP Admin"
+                      onClick={(e) => { e.stopPropagation(); openWpLogin(w.id, w.adminUrl); }}
+                      className="self-start flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 border border-sky-500/20 transition-colors"
+                    >
+                      <LogIn className="h-3 w-3" />
+                      WP Login
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

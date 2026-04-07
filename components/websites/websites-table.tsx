@@ -38,8 +38,11 @@ import {
   ArrowUp,
   ArrowDown,
   ExternalLink,
+  LogIn,
 } from 'lucide-react';
+import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useWebsites, useWebsiteMutations } from '@/hooks/use-websites';
+import { openWpLogin } from '@/lib/wp-login';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WebsiteDetailsSheet } from './website-details-sheet';
 
@@ -252,6 +255,22 @@ export function WebsitesTable({ filters, onPageChange, onSortChange }: WebsitesT
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        {/* WordPress Auto-Login */}
+                        {website.websiteType === 'wordpress' && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openWpLogin(website.id, website.adminUrl);
+                              }}
+                              className="text-sky-600 focus:text-sky-600 font-medium"
+                            >
+                              <LogIn className="mr-2 h-4 w-4" />
+                              Login to WP Admin
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
                         {canEdit('websites') && (
                           <DropdownMenuItem
                             onClick={(e) => {

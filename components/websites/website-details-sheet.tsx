@@ -9,7 +9,8 @@ import {
 import { useWebsite } from '@/hooks/use-websites';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Globe, Server, Key, Link2, FileText, ExternalLink, Activity, LayoutTemplate } from 'lucide-react';
+import { Loader2, Globe, Server, Key, Link2, FileText, ExternalLink, Activity, LayoutTemplate, LogIn } from 'lucide-react';
+import { openWpLogin } from '@/lib/wp-login';
 import { PasswordDisplay } from '@/components/ui/password-display';
 
 interface WebsiteDetailsSheetProps {
@@ -172,10 +173,22 @@ export function WebsiteDetailsSheet({ websiteId, onClose }: WebsiteDetailsSheetP
 
             {/* Login & Access */}
             <div className="space-y-4 rounded-lg border p-4 shadow-sm bg-card">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-4 border-b pb-2">
-                <Key className="h-4 w-4" />
-                Login & Access
-              </h3>
+              <div className="flex items-center justify-between border-b pb-2 mb-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Key className="h-4 w-4" />
+                  Login & Access
+                </h3>
+                {website.websiteType === 'wordpress' && adminCreds?.username && adminCreds?.passwordEncrypted && (
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium"
+                    onClick={() => openWpLogin(website.id, website.adminUrl)}
+                  >
+                    <LogIn className="h-3.5 w-3.5" />
+                    Login to WP Admin
+                  </Button>
+                )}
+              </div>
               <div className="grid grid-cols-1 gap-y-4 text-sm">
                 <div>
                   <p className="text-muted-foreground mb-1">Admin URL</p>
