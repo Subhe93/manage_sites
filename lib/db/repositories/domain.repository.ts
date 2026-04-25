@@ -7,6 +7,7 @@ export interface DomainFilters {
   clientId?: number;
   registrarId?: number;
   search?: string;
+  accessibleIds?: number[];
 }
 
 export class DomainRepository extends BaseRepository<
