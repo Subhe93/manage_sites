@@ -7,6 +7,7 @@ export interface ServerFilters {
   status?: ServerStatus;
   providerId?: number;
   search?: string;
+  accessibleIds?: number[];
 }
 
 export class ServerRepository extends BaseRepository<
